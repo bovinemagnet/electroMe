@@ -1,0 +1,158 @@
+{#if dashboard.empty()}
+<section class="panel">
+  <h2 style="margin-top:0; font-size:16px">Nothing to compare</h2>
+  <p class="explain" style="margin:0">
+    No plans are defined for this window. Add a YAML file to the plans directory and press
+    Reload plan files.
+  </p>
+</section>
+{#else}
+
+{#let best=dashboard.comparison.best().get() h=dashboard.highlights}
+<section class="panel verdict">
+  <div>
+    <p class="eyebrow" style="margin-bottom:9px">Your bill, {dashboard.range.days()} days to {dashboard.range.to}</p>
+    <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap">
+      <span class="num figure">{money:dollars(best.total())}</span>
+      <span style="font-size:15px; color:var(--muted)">on {best.planName()}</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="lede">
+    <span class="badge">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 19V5"/><path d="m5 12 7-7 7 7"/>
+      </svg>
+      Cheapest of the {dashboard.comparison.results.size} plans compared
+    </span>
+    <span style="font-size:13.5px; color:var(--muted); line-height:1.5">
+      {#if dashboard.comparison.results.size > 1}
+      {money:dollars(dashboard.comparison.spread())} a year separates the cheapest plan from the
+      dearest. That gap is the size of the decision.
+      {#else}
+      Add another plan to compare this one against.
+      {/if}
+    </span>
+  </div>
+</section>
+
+<div class="stats">
+  <div class="panel stat">
+    <p class="eyebrow">Consumed</p>
+    <span class="num value">{money:kWh(h.totalKWh())}</span>
+    <p class="note">{money:kWh(h.averageDailyKWh())} a day on average</p>
+  </div>
+  <div class="panel stat">
+    <p class="eyebrow">Effective rate</p>
+    <span class="num value">{money:cents(h.averageCentsPerKWh())}</span>
+    <span class="unit">/kWh</span>
+    <p class="note">All charges, divided by energy used</p>
+  </div>
+  {#if h.hasPeakWindow()}
+  <div class="panel stat alert">
+    <p class="eyebrow">of your bill, from {h.peakWindow()}</p>
+    <span class="num value">{money:percent(h.peakShareOfBill())}</span>
+    <p class="note">That window is {money:percent(h.peakShareOfEnergy())} of your energy</p>
+  </div>
+  {/if}
+  <div class="panel stat alert">
+    <p class="eyebrow">Average draw at {h.peakTime()}</p>
+    <span class="num value">{money:kW(h.peakKW())}</span>
+    <p class="note">Your daily peak, inside the dearest band</p>
+  </div>
+</div>
+{/let}
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">What each plan would have cost</p>
+  <p class="explain">
+    Your actual half-hourly consumption, priced by each tariff. Bars are stacked by charge
+    component, so you can see <em>where</em> the difference sits rather than only which plan wins.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th><th>Where the money goes</th>
+          <th class="right">Total</th><th class="right">vs best</th><th class="right">Avg rate</th>
+        </tr>
+      </thead>
+      <tbody>
+      {#for row in dashboard.rows}
+        <tr class="{#if row.result.cheapest}cheapest{/if}">
+          <td>
+            <div class="plan-name">{row.result.planName()}{#if row.result.cheapest}<span class="best-tag">BEST</span>{/if}</div>
+            <div class="plan-sub">{row.result.retailer()}</div>
+          </td>
+          <td>
+            <div class="stack">
+            {#for segment in row.bars.segments}
+              <span style="width:{segment.widthPercent}%; background:{segment.colour}"
+                    title="{segment.label}: {money:dollars(segment.cost)}"></span>
+            {/for}
+            </div>
+          </td>
+          <td class="right num" style="font-size:17px; font-weight:600">{money:dollars(row.result.total())}</td>
+          <td class="right num" style="font-size:13.5px; color:{#if row.result.cheapest}var(--muted){#else}var(--peak){/if}">
+            {#if row.result.cheapest}&mdash;{#else}+{money:dollars(row.result.differenceFromBest())}{/if}
+          </td>
+          <td class="right num" style="font-size:13.5px; color:var(--muted)">{money:cents(row.result.bill().averageCentsPerKWh())}</td>
+        </tr>
+      {/for}
+      </tbody>
+    </table>
+  </div>
+  <div class="legend">
+  {#for entry in dashboard.legend}
+    <span><span class="swatch" style="background:{entry.colour}"></span>{entry.label}</span>
+  {/for}
+  </div>
+</section>
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">When you use electricity, and what it costs</p>
+  <p class="explain">
+    Average draw through the day, with the cheapest plan's tariff windows shaded behind it.
+    The red band is the expensive window &mdash; where your curve is high inside it is where your
+    bill is made. Seasonal and weekday curves are one legend click away.
+  </p>
+  <div class="chart" data-chart="{dashboard.loadCurveChart}"></div>
+</section>
+
+<div class="two-up">
+  <section class="panel">
+    <p class="eyebrow" style="margin-bottom:4px">Where the money goes</p>
+    <p class="explain">
+      The cheapest plan's bill, ranked. Bars rather than a pie: six components are hard to
+      compare by angle and easy by length.
+    </p>
+    <div class="ranked">
+    {#for segment in dashboard.attribution.segments}
+      <div class="row">
+        <span>{segment.label}</span>
+        <div class="track"><div class="fill" style="width:{segment.widthPercent}%; background:{segment.colour}"></div></div>
+        <span class="num right">{money:dollars(segment.cost)}</span>
+        <span class="num right" style="color:var(--muted); font-size:11.5px">{segment.sharePercent}%</span>
+      </div>
+    {/for}
+    </div>
+  </section>
+
+  <section class="panel">
+    <p class="eyebrow" style="margin-bottom:4px">Consumption by month</p>
+    <p class="explain">Total {money:kWh(dashboard.analysis.totalKWh())} across this window.</p>
+    <div class="chart" style="height:280px" data-chart="{dashboard.monthlyChart}"></div>
+  </section>
+</div>
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">Every half hour</p>
+  <p class="explain">
+    Each column is a day, each row a half hour. Darker means more energy. Full resolution, not
+    downsampled &mdash; daily routine, seasonal change and unusual days all show up here.
+  </p>
+  <div class="chart tall" data-chart="{dashboard.heatmapChart}"></div>
+</section>
+
+{/if}

@@ -37,7 +37,7 @@ public class UsageStore {
 
     @PostConstruct
     void load() {
-        Path path = Path.of(csvPath);
+        Path path = Workspace.resolveFile(csvPath);
         if (!Files.exists(path)) {
             loadError = "No interval data found at " + path.toAbsolutePath()
                     + ". Set electrome.usage.csv to point at your export.";

@@ -37,5 +37,8 @@ subprojects {
 
     tasks.withType<JavaCompile>().configureEach {
         options.compilerArgs.add("-Xlint:all")
+        // Qute's @CheckedTemplate binds template holes to method parameter names, which are
+        // only present in the class file when javac is told to keep them.
+        options.compilerArgs.add("-parameters")
     }
 }

@@ -33,7 +33,7 @@ public class PlanStore {
     }
 
     public final void reload() {
-        Path directory = Path.of(plansDir);
+        Path directory = Workspace.resolveDirectory(plansDir);
         if (!Files.isDirectory(directory)) {
             plans = List.of();
             loadErrors = List.of("No plan directory at " + directory.toAbsolutePath());
