@@ -1,5 +1,7 @@
-# Personal usage data — contains account number and NMI, do not commit
-*.csv
+# The household interval export — carries an account number and an NMI.
+# Scoped to the repository root deliberately: a blanket *.csv also excluded the
+# test fixtures, which left a fresh clone unable to run its own test suite.
+/*.csv
 data/
 
 # Gradle
