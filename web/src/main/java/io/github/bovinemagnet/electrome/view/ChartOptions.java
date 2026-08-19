@@ -57,7 +57,7 @@ public final class ChartOptions {
             entry.put("showSymbol", false);
             entry.put("z", overall ? 5 : 3);
             entry.put("lineStyle", Map.of("width", overall ? 2.6 : 1.3));
-            entry.put("itemStyle", Map.of("color", overall ? "@accent" : seriesColour(i)));
+            entry.put("itemStyle", Map.of("color", overall ? BandPalette.chartRef("accent") : seriesColour(i)));
             if (!overall) {
                 // Only the overall curve is shown at first; the rest are one legend click away.
                 entry.put("lineStyle", Map.of("width", 1.3, "opacity", 0.85));
@@ -91,7 +91,7 @@ public final class ChartOptions {
 
     private static String seriesColour(int index) {
         var tokens = List.of("shoulder", "midday", "offpeak", "peak", "supply");
-        return "@" + tokens.get(index % tokens.size());
+        return BandPalette.chartRef(tokens.get(index % tokens.size()));
     }
 
     /** Shaded regions for each tariff band, labelled with its rate. */
@@ -109,7 +109,7 @@ public final class ChartOptions {
             var start = new LinkedHashMap<String, Object>();
             start.put("xAxis", Money.slotTime(fromSlot));
             start.put("name", Money.cents(band.centsPerKWh()));
-            start.put("itemStyle", Map.of("color", "@" + token, "opacity",
+            start.put("itemStyle", Map.of("color", BandPalette.chartRef(token), "opacity",
                     BandPalette.PEAK.equals(token) ? 0.15 : 0.07));
             var end = new LinkedHashMap<String, Object>();
             end.put("xAxis", Money.slotTime(toSlot));
@@ -117,7 +117,7 @@ public final class ChartOptions {
         }
         return Map.of("silent", true,
                 "label", Map.of("show", true, "position", "insideTop", "fontSize", 10,
-                        "distance", 4, "color", "@muted"),
+                        "distance", 4, "color", BandPalette.chartRef("muted")),
                 "data", areas);
     }
 
@@ -136,9 +136,9 @@ public final class ChartOptions {
     private static Map<String, Object> peakMarker(LoadCurve curve) {
         return Map.of(
                 "symbol", "circle", "symbolSize", 9,
-                "itemStyle", Map.of("color", "@peak"),
+                "itemStyle", Map.of("color", BandPalette.chartRef("peak")),
                 "label", Map.of("show", true, "position", "top", "fontSize", 11,
-                        "fontWeight", "bold", "color", "@peak", "formatter", "{c} kW"),
+                        "fontWeight", "bold", "color", BandPalette.chartRef("peak"), "formatter", "{c} kW"),
                 "data", List.of(Map.of(
                         "coord", List.of(Money.slotTime(curve.peakSlot()),
                                 curve.peakKW().setScale(2, java.math.RoundingMode.HALF_UP)),
@@ -189,7 +189,7 @@ public final class ChartOptions {
                                 "#4292c6", "#2171b5", "#08519c", "#08306b"))));
         option.put("series", List.of(Map.of(
                 "type", "heatmap", "data", data, "progressive", 6000,
-                "emphasis", Map.of("itemStyle", Map.of("borderColor", "@fg", "borderWidth", 1)))));
+                "emphasis", Map.of("itemStyle", Map.of("borderColor", BandPalette.chartRef("fg"), "borderWidth", 1)))));
         return option;
     }
 
@@ -232,7 +232,7 @@ public final class ChartOptions {
                 "type", "bar", "data", values, "barMaxWidth", 26,
                 "label", Map.of("show", true, "position", "right",
                         "formatter", "@dollarLabel", "fontSize", 11),
-                "itemStyle", Map.of("color", "@offpeak", "borderRadius", List.of(0, 3, 3, 0)))));
+                "itemStyle", Map.of("color", BandPalette.chartRef("offpeak"), "borderRadius", List.of(0, 3, 3, 0)))));
         return option;
     }
 
@@ -254,7 +254,7 @@ public final class ChartOptions {
                 Map.of("fontSize", 11)));
         option.put("series", List.of(Map.of(
                 "type", "bar", "data", values, "barMaxWidth", 34,
-                "itemStyle", Map.of("color", "@accent", "borderRadius", List.of(3, 3, 0, 0)))));
+                "itemStyle", Map.of("color", BandPalette.chartRef("accent"), "borderRadius", List.of(3, 3, 0, 0)))));
         return option;
     }
 }

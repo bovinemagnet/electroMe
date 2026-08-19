@@ -1,6 +1,5 @@
 package io.github.bovinemagnet.electrome.view;
 
-import io.github.bovinemagnet.electrome.core.cost.ChargeKind;
 import io.github.bovinemagnet.electrome.core.cost.ChargeLine;
 import io.github.bovinemagnet.electrome.core.tariff.Band;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
@@ -48,10 +47,6 @@ public final class BandPalette {
      */
     public static String chartRef(String token) {
         return "@" + token;
-    }
-
-    public static String colourFor(Plan plan, ChargeLine line) {
-        return tokenFor(plan, line);
     }
 
     public static String tokenFor(Plan plan, ChargeLine line) {

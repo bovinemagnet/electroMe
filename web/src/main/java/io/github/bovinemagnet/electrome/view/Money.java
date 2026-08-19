@@ -29,14 +29,6 @@ public final class Money {
         return rounded.signum() < 0 ? "-$" + text : "$" + text;
     }
 
-    /** Dollars with no cents, for headline figures where the cents are noise. */
-    public static String dollarsRound(BigDecimal amount) {
-        if (amount == null) {
-            return "";
-        }
-        return "$" + format("#,##0").format(amount.setScale(0, RoundingMode.HALF_UP));
-    }
-
     public static String cents(BigDecimal rate) {
         if (rate == null) {
             return "";
