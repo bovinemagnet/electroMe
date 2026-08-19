@@ -20,6 +20,18 @@
   font-display: swap;
 }
 
+/* Band colours are held at or above a 3:1 contrast ratio against the panel and page
+   backgrounds, the WCAG AA floor for graphical objects: these are bar fills and
+   swatches a reader has to tell apart, not decoration. Body text clears 4.5:1.
+
+   Measured worst case against either background:
+     light  fg 15.8  muted 5.1  accent 6.5  peak 4.8  shoulder 3.8  offpeak 3.6
+            midday 3.2  supply 3.2
+     dark   fg 14.6  muted 5.9  accent 9.6  peak 5.5  shoulder 6.9  offpeak 7.8
+            midday 8.5  supply 4.7
+
+   midday and supply are the tight ones in light: raising their lightness above
+   0.645 drops them under the floor. */
 :root {
   --bg: oklch(0.985 0.004 95);
   --panel: #ffffff;
@@ -30,10 +42,10 @@
   --accent: oklch(0.46 0.09 178);
   --accent-soft: oklch(0.955 0.022 178);
   --peak: oklch(0.56 0.15 25);
-  --midday: oklch(0.68 0.12 85);
+  --midday: oklch(0.645 0.12 85);
   --shoulder: oklch(0.60 0.11 250);
   --offpeak: oklch(0.60 0.11 155);
-  --supply: oklch(0.66 0.018 250);
+  --supply: oklch(0.645 0.018 250);
   --warn: oklch(0.62 0.12 70);
   --error: oklch(0.55 0.16 25);
 }
