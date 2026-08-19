@@ -1,0 +1,99 @@
+= Market plans
+:description: Harvesting every published retail plan for your network and comparing it against your usage.
+
+Defining tariffs by hand answers "is my plan better than that one". Harvesting the market answers
+the question you actually have: *where does my plan rank against everything I could switch to?*
+
+== Where the data comes from
+
+Australian energy retailers are obliged to publish their plans as machine-readable Product
+Reference Data under the Consumer Data Right. electroMe reads it directly from the register, which
+is public, free and needs no key.
+
+Despite the branding, the endpoint serves Victorian plans as well as the rest of the National
+Electricity Market: Victorian offers carry a `@VEC` suffix on their identifier.
+
+Victorian Energy Compare has an undocumented API for the same underlying data. electroMe does not
+use it, because its terms restrict access to a browser for your own household.
+
+== Running a harvest
+
+Press *Fetch market plans* at the bottom of the page.
+
+Nothing is fetched when the application starts. A harvest reaches a public regulator's
+infrastructure and takes tens of seconds, so it happens only when you ask, and the application
+remains usable with no network at all.
+
+A typical harvest of the AusNet network:
+
+[cols="3,1"]
+|===
+| Retailers queried | 80
+| Plans published across all networks | 16,186
+| Residential electricity plans serving this network | 619
+| Mapped successfully | 619
+| Distinct tariffs after removing duplicates | 182
+| Time taken | under 30 seconds
+|===
+
+Responses are cached on disk and refetched only when the published plan changes, so a second
+harvest is close to instant.
+
+[#duplicates]
+== Why deduplication matters
+
+A single retailer publishes thousands of plan identifiers, because every postcode group and meter
+variant is a separate plan even when the rates are identical. Six hundred plans collapse to under
+two hundred distinct tariffs.
+
+Plans with identical charges from the *same* retailer are collapsed to one. Two different
+retailers at the same price are both kept — that is a real choice, not duplication.
+
+[#requirements]
+== Plans with requirements
+
+Some of the cheapest published plans are only offered to households that own or have joined
+something: solar panels, a home battery, an electric vehicle, a loyalty programme, a streaming
+bundle. Those are marked *requirements* in the comparison; hover the marker to read them.
+
+This matters more than it sounds. On a real harvest the cheapest plan overall required solar, a
+battery *and* an electric vehicle. Presented without distinction it would have promised a saving
+the household simply could not take.
+
+[NOTE]
+====
+Ordinary conditions that nearly every plan carries — being in the right distribution zone, having
+an applicable network tariff, having a smart meter — are *not* marked. Flagging those would mark
+almost every plan and tell you nothing.
+
+The published data gives no structured way to tell the two apart: every eligibility entry is typed
+`OTHER`, so the distinction is drawn from the wording. Treat the marker as a prompt to read the
+plan's own terms, not as a guarantee either way.
+====
+
+== What is not modelled
+
+Discounts and credits::
+Conditional discounts, sign-up credits and referral bonuses are not applied. A plan's headline
+saving may improve on what is shown, or evaporate when a discount period ends.
+
+Fees::
+Membership, disconnection and payment-processing fees are not costed.
+
+Seasonal tariffs::
+Where a plan publishes several seasonal periods, the first is used. The tariff model has no
+seasonal dimension, and mapping one period is honest where blending them would not be.
+
+Price changes::
+Rates are what is published today. The feed gives no advance notice of changes.
+
+== Your own plans always win
+
+A plan file in `plans/` takes precedence over a harvested plan with the same identifier. Your
+hand-written tariff is a deliberate statement — usually the plan you are actually on, which may no
+longer be published — and is never silently replaced.
+
+== See also
+
+* xref:defining-a-plan.adoc[Defining a plan] — for the tariff you are on now.
+* xref:configuration.adoc[Configuration] — disabling harvesting, and where the cache lives.

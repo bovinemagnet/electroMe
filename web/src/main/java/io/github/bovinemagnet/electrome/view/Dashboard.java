@@ -28,10 +28,16 @@ public record Dashboard(
         UsageAnalysis analysis) {
 
     public static Dashboard of(Comparison comparison, UsageAnalysis analysis, DateRange range) {
+        return of(comparison, analysis, range, java.util.Map.of());
+    }
+
+    public static Dashboard of(Comparison comparison, UsageAnalysis analysis, DateRange range,
+            java.util.Map<String, List<String>> conditions) {
         var rows = new ArrayList<PlanRow>();
         BigDecimal scale = comparison.maxTotal();
         for (var result : comparison.results()) {
-            rows.add(new PlanRow(result, BillBars.of(result.bill(), scale)));
+            rows.add(new PlanRow(result, BillBars.of(result.bill(), scale),
+                    conditions.get(result.bill().plan().id())));
         }
 
         // One legend for the whole page, in first-seen order across every plan, so a colour

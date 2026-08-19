@@ -4,6 +4,7 @@
 ** xref:getting-started.adoc[Getting started]
 ** xref:reading-the-dashboard.adoc[Reading the dashboard]
 ** xref:what-if.adoc[What-if modelling]
+** xref:market-plans.adoc[Market plans]
 
 * Reference
 ** xref:defining-a-plan.adoc[Defining a plan]

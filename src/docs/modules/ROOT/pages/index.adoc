@@ -39,8 +39,8 @@ changes which tariff suits you.
 
 * *It is not a switching service.* It tells you what a tariff would have cost. Signing up is your
   business.
-* *It does not fetch plans for you yet.* You define tariffs as small YAML files. Automatic
-  harvesting of published market offers is planned but not built.
+* *It does not sign you up.* It can fetch and rank every published plan for your network — see
+  xref:market-plans.adoc[Market plans] — but acting on the answer is up to you.
 * *It is not financial advice.* The what-if figures are upper bounds from a simplified model —
   see xref:what-if.adoc#assumptions[the assumptions] before acting on them.
 

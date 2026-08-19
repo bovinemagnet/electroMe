@@ -69,6 +69,11 @@
   <p class="explain">
     Your actual half-hourly consumption, priced by each tariff. Bars are stacked by charge
     component, so you can see <em>where</em> the difference sits rather than only which plan wins.
+    A plan marked <span class="conditional">requirements</span> is only offered to households
+    that own or join something &mdash; solar, a battery, an electric vehicle, a membership &mdash;
+    so check you qualify before treating its saving as available. Hover the marker to read them.
+    Ordinary conditions every plan carries, such as being in the right distribution zone, are not
+    marked.
   </p>
   <div class="table-scroll">
     <table>
@@ -83,7 +88,10 @@
         <tr class="{#if row.result.cheapest}cheapest{/if}">
           <td>
             <div class="plan-name">{row.result.planName()}{#if row.result.cheapest}<span class="best-tag">BEST</span>{/if}</div>
-            <div class="plan-sub">{row.result.retailer()}</div>
+            <div class="plan-sub">
+              {row.result.retailer()}
+              {#if row.conditional()}<span class="conditional" title="{row.conditionsText()}">requirements</span>{/if}
+            </div>
           </td>
           <td>
             <div class="stack">

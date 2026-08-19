@@ -9,6 +9,7 @@ dependencies {
 
     implementation(project(":core"))
     implementation(project(":ingest"))
+    implementation(project(":market"))
 
     implementation("io.quarkus:quarkus-rest")
     implementation("io.quarkus:quarkus-rest-jackson")

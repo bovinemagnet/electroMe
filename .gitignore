@@ -27,3 +27,7 @@ bin/
 
 # Node toolchain for the documentation build
 node_modules/
+
+# CDR response cache
+.cdr-cache/
+build/live-cdr-cache/

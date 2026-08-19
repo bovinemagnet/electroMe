@@ -38,6 +38,7 @@ public class FragmentResource {
     @Inject PlanStore planStore;
     @Inject ComparisonService comparisons;
     @Inject AnalysisService analyses;
+    @Inject io.github.bovinemagnet.electrome.app.MarketPlanSource market;
 
     @GET
     @Path("/dashboard")
@@ -46,7 +47,8 @@ public class FragmentResource {
             @QueryParam("from") String from, @QueryParam("to") String to) {
         var range = range(from, to);
         return Templates.dashboard(
-                Dashboard.of(comparisons.compare(range), analyses.analyse(range), range));
+                Dashboard.of(comparisons.compare(range), analyses.analyse(range), range,
+                        market.conditions()));
     }
 
     @GET
