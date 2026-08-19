@@ -1,8 +1,8 @@
 # The tariff currently in force at the premises.
-# Retailer and plan name are not yet known; update when the bill is to hand.
+# Retailer confirmed as AGL. The plan name is still unknown; update when the bill is to hand.
 id: current-tou
 name: Current tariff
-retailer: Unknown
+retailer: AGL
 zone: AUSNET
 gstInclusive: true
 charges:
