@@ -1,5 +1,6 @@
 plugins {
     java
+    id("io.quarkus") version "3.22.3" apply false
 }
 
 allprojects {
