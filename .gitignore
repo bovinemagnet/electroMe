@@ -27,9 +27,11 @@ bin/
 # OS
 .DS_Store
 
-# Implementation plans stay local. They are working artefacts for building the
-# thing, not documentation of it; the design specs and src/docs are the record.
-docs/superpowers/plans/
+# Working artefacts for building the thing, not documentation of it. The record
+# that belongs here is src/docs and the code. These stay local.
+docs/superpowers/
+design-phase2/
+design-market/
 
 # Node toolchain for the documentation build
 node_modules/
@@ -37,3 +39,7 @@ node_modules/
 # CDR response cache
 .cdr-cache/
 build/live-cdr-cache/
+design-market/
+design-phase2/
+docs/superpowers/specs/
+plans/
