@@ -1,0 +1,76 @@
+= What-if modelling
+:description: What shifting load, adding solar, or adding a battery would be worth per year.
+
+The comparison answers "which plan suits how I use power now". This panel answers the more useful
+question: *what would change the answer?*
+
+== How a scenario is scored
+
+Each scenario transforms your consumption, then re-costs the result *against every plan you have
+defined*, and reports the saving against your current cheapest option.
+
+The scoring is deliberately against the best plan available *under that scenario*, not against the
+plan you are on today. Part of a battery's value is that it changes which tariff suits you, and
+holding the tariff fixed would understate it. Where a scenario would move you to a different plan,
+the table says so.
+
+Savings are scaled to a year from whatever window you have selected, so a three-month window does
+not read as an annual figure.
+
+== The scenarios
+
+Shift load out of the peak::
+Moves a proportion of the energy you use in the dearest window into the cheapest one, day by day,
+spread evenly. This models running the dishwasher, the pool pump or the car charger overnight
+instead of at dinner time. Energy is conserved exactly — nothing is created or destroyed, only
+moved.
+
+Add solar::
+Models a north-facing array and nets its output against your consumption *within each half hour*.
+Only surplus is exported, only shortfall imported. That granularity matters enormously: netting at
+a daily level would treat a midday surplus and an evening import as cancelling out, when the
+tariff does the opposite — evening imports cost around 50 cents a unit while exports earn a few.
+
+Add a battery::
+Charges in the tariff's cheapest window and discharges in its dearest, bounded by capacity, power
+rating and round-trip efficiency. Any solar surplus charges the battery before being exported.
+
+Both together::
+Solar applied first, then the battery, because a battery should work against consumption that
+solar has already offset.
+
+Adjust the array size, battery capacity and shift proportion with the controls; the figures
+re-compute.
+
+== Reading the result
+
+Expect solar and a battery *together* to save less than the two figures added up. They compete for
+the same evening consumption — once solar has cut your daytime import, there is less left for the
+battery to displace.
+
+Expect total grid *import* to rise when a battery is added, even as the bill falls. Storing energy
+costs energy: round-trip losses are real, and the model does not hide them.
+
+[#assumptions]
+== The assumptions these rest on
+
+Read every scenario figure as an *upper bound*.
+
+There is no weather in the solar model::
+Output is what a cloudless sky would deliver. Annual generation therefore comes out roughly a fifth
+above what a real array in the same place yields. The *shape* is right — generation peaks near
+solar noon and has largely finished before the evening peak window opens — and shape is what a
+tariff comparison needs.
+
+The battery controller is deliberately simple::
+It charges cheap and discharges dear on fixed windows. It is not a perfect-foresight optimiser,
+because an optimiser would report a saving no real installation achieves.
+
+One consequence, which is a genuine limitation rather than a defect: with both solar and a
+grid-charge window, the battery fills overnight and has no headroom left when the midday surplus
+arrives, so that surplus is exported rather than stored. Real units avoid this by reserving
+capacity against a solar forecast. A rule-based controller has no forecast.
+
+Capital cost is not modelled::
+The figures are annual bill savings. Whether an installation pays for itself is arithmetic you
+must do against a real quote.

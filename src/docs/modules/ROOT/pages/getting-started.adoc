@@ -1,0 +1,83 @@
+= Getting started
+:description: Export your interval data, define a tariff, and run electroMe.
+
+You need three things: your interval data, at least one tariff to compare, and Java 21.
+
+== Before you begin
+
+[cols="1,3"]
+|===
+| Java 21 | The build runs on it. `gradle21w` selects it for you.
+| Your interval data | A CSV of half-hourly readings. See <<export>>.
+| A tariff | At least one, as YAML. One is shipped; see xref:defining-a-plan.adoc[Defining a plan].
+|===
+
+[#export]
+== Export your interval data
+
+Every Australian premises with a smart meter has half-hourly consumption recorded against its
+NMI. You are entitled to it, free.
+
+. Sign in to your electricity retailer's website.
+. Look for *usage data*, *my usage*, or *download my data*. Distributors offer the same thing:
+  AusNet's portal is at `ausnetservices.com.au`.
+. Request the longest period offered. Two years is common and is enough to see both summers.
+. You will receive a CSV. Save it into the project directory.
+
+The file looks like this — one row per half hour:
+
+[source,csv]
+----
+AccountNumber,NMI,DeviceNumber,DeviceType,RegisterCode,RateTypeDescription,StartDate,EndDate,ProfileReadValue,RegisterReadValue,QualityFlag
+1234567890,6305000000X,000000000000000000,MRIM,00000#001,Generalusage,19/08/2024 12:00:00 AM,19/08/2024 12:29:59 AM,0.424,0,A
+----
+
+`ProfileReadValue` is the kilowatt-hours consumed in that half hour. That is the column everything
+else is derived from. The account number and NMI above are placeholders; yours will be real.
+
+[IMPORTANT]
+====
+This file identifies you. It carries your account number and your NMI, and it reveals when you are
+home. The project's `.gitignore` excludes `*.csv` for that reason. Keep it that way.
+====
+
+== Point the application at it
+
+Open `web/src/main/resources/application.properties` and set the path:
+
+[source,properties]
+----
+electrome.usage.csv=../MyUsageData_19-08-2026.csv
+----
+
+Relative paths are resolved by searching upwards from the working directory, so a path relative to
+the project root works whether you run tests, development mode, or a packaged build. See
+xref:configuration.adoc[Configuration] for the rest.
+
+== Run it
+
+[source,bash]
+----
+gradle21w quarkusDev
+----
+
+Then open http://localhost:8080.
+
+The first load costs every plan against your whole history, which takes well under a second even
+for two years of data.
+
+TIP: Development mode reloads on save. The Quarkus Dev UI sits at `/q/dev-ui`.
+
+== What you should see
+
+A verdict at the top — what your cheapest plan costs for the selected window, and by how much it
+beats the others — then the comparison, the load curve, and the deeper analysis below it.
+
+If you instead see *No usage data loaded*, the path is wrong. The message names the absolute path
+it looked for.
+
+== Next steps
+
+* xref:reading-the-dashboard.adoc[Reading the dashboard] — what each figure means.
+* xref:defining-a-plan.adoc[Defining a plan] — add the tariff you are actually on.
+* xref:what-if.adoc[What-if modelling] — what solar, a battery, or shifting load would be worth.

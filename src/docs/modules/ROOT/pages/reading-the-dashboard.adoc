@@ -1,0 +1,96 @@
+= Reading the dashboard
+:description: What each panel and figure on the electroMe dashboard means.
+
+The page is ordered as an argument: the answer first, then the evidence for it.
+
+== The verdict
+
+The headline figure is what the *cheapest plan you have defined* would have cost over the selected
+window, on your actual consumption. Beside it sits the gap to the dearest plan — the size of the
+decision you are making.
+
+The window defaults to the most recent twelve months of data you have. Change it with the date
+controls; everything below re-costs.
+
+== The stat tiles
+
+Consumed::
+Total energy drawn from the grid over the window, and the daily average.
+
+Effective rate::
+The entire bill divided by the energy used, in cents per kilowatt hour. This is the number to
+compare between plans, because it folds in the daily supply charge. A plan with a low usage rate
+and a high supply charge can easily lose to one advertised as dearer.
+
+Share of bill from the peak window::
+The proportion of the bill attributable to the dearest time-of-use band, alongside the proportion
+of *energy* consumed in it. When the first is much larger than the second, timing is costing you
+money. This tile is omitted when the cheapest plan is a flat rate, because the figure would be
+meaningless rather than merely zero.
+
+Average draw at the daily peak::
+Your highest average power draw across the day, and when it occurs. This is the figure a demand
+tariff would price.
+
+== What each plan would have cost
+
+Each row is one tariff, cheapest first. The bar is the bill broken into its charge components and
+scaled so that rows share one axis — so you are comparing like with like across plans, not just
+totals.
+
+Colours mean the same thing everywhere on the page:
+
+[cols="1,3"]
+|===
+| Red | The dearest usage window
+| Amber | The middle-of-day window, where a solar-soak rate usually sits
+| Blue | Shoulder rates
+| Green | The cheapest window
+| Grey | Daily supply charge
+|===
+
+The daytime window keeps its amber whether or not it happens to be the cheapest rate on that
+particular plan, so the same window is recognisable across tariffs.
+
+*Above cheapest* is what a plan costs you over the winner — the figure to act on.
+
+== When you use electricity, and what it costs
+
+Your average power draw through the day, with the cheapest plan's price windows shaded behind it.
+
+This is the diagnostic chart. A load curve alone tells you when you use power; the shading tells
+you whether that timing is expensive. Where the curve runs high inside the red band is where the
+bill is made.
+
+The dot marks your daily peak. Seasonal and weekday curves are available from the legend — they
+start hidden, because showing seven curves at once is unreadable.
+
+== Where the money goes
+
+The cheapest plan's bill, ranked by size. Bars rather than a pie: six components are hard to
+compare by angle and easy by length. The percentage is each component's share of the whole bill.
+
+== Consumption by month
+
+Total energy per calendar month. Part-months at the edges of the window are included as-is, so a
+window that starts mid-month shows a short first bar.
+
+== Every half hour
+
+One column per day, one row per half hour, darker meaning more energy. Full resolution — two years
+is 35,040 cells and none are averaged away, because the texture is the point: you can see daily
+routine, the seasonal shift, and unusual days.
+
+The colour scale is clamped at the 99th percentile. Scaling to the single largest cell would let
+one extreme day wash everything else into the palest shade.
+
+== About your data
+
+Findings from reading your file. None of them invalidate a comparison; they explain small
+differences against a printed bill. Typical entries:
+
+* *Days carrying fewer intervals than usual.* Spring-forward days legitimately have 46 half hours
+  rather than 48, because 2am–3am never happened.
+* *Estimated or substituted reads*, where the meter was not actually read.
+* *Your heaviest day against your median*, which is irrelevant to a time-of-use comparison but
+  decisive for a demand tariff.

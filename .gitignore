@@ -24,3 +24,6 @@ bin/
 
 # OS
 .DS_Store
+
+# Node toolchain for the documentation build
+node_modules/

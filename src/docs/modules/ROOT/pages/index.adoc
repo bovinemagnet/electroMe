@@ -1,0 +1,53 @@
+= electroMe
+:description: Work out which retail electricity plan actually costs you least, using your own half-hourly consumption.
+
+electroMe answers one question: *which electricity plan actually costs you least, given how you
+really use power?*
+
+It reads the half-hourly interval data your retailer or distributor already holds about your
+premises, prices it against as many tariffs as you care to define, and shows you where the money
+goes.
+
+== Why not just compare the advertised rates
+
+Because a tariff is not a single number. A time-of-use plan charges differently depending on when
+you use electricity, so two households on the same tariff pay very different effective rates. The
+only way to know which plan suits *you* is to price *your* consumption, half hour by half hour.
+
+The difference is not academic. On the data this software was built against, the 4pm–9pm window
+accounts for *28% of the energy consumed and 42% of the bill*. A comparison that ignores timing
+cannot see that at all.
+
+== What it does
+
+Compare plans::
+Prices your real consumption against every tariff you define, ranks them cheapest first, and
+breaks each bill into its components so you can see *where* the difference sits rather than only
+which plan wins.
+
+Explain the bill::
+Charts your average load through the day with the tariff's price windows shaded behind it, so the
+overlap between when you use power and when it is expensive is visible at a glance. Also shows
+consumption by month and a full-resolution heatmap of every half hour.
+
+Model what would change the answer::
+Estimates what shifting load out of the peak window, adding solar, or adding a battery would be
+worth per year — each re-costed against every plan, because part of a battery's value is that it
+changes which tariff suits you.
+
+== What it does not do
+
+* *It is not a switching service.* It tells you what a tariff would have cost. Signing up is your
+  business.
+* *It does not fetch plans for you yet.* You define tariffs as small YAML files. Automatic
+  harvesting of published market offers is planned but not built.
+* *It is not financial advice.* The what-if figures are upper bounds from a simplified model —
+  see xref:what-if.adoc#assumptions[the assumptions] before acting on them.
+
+== Getting started
+
+xref:getting-started.adoc[Start here] to export your data and run it.
+
+'''
+
+Author: Paul Snow. Version 0.0.0.

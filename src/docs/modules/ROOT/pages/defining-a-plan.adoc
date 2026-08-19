@@ -1,0 +1,113 @@
+= Defining a plan
+:description: How to write a tariff as a YAML file so electroMe can price it.
+
+A plan is one YAML file in the `plans/` directory. Every file there is loaded at startup, and the
+*Reload plan files* button at the bottom of the page re-reads them without a restart.
+
+== A worked example
+
+Here is a real Victorian time-of-use tariff, exactly as it appears on the bill:
+
+[cols="2,1"]
+|===
+| Daily supply charge | 123.20 c/day
+| 4pm–9pm | 49.54 c/kWh
+| 9pm–12am and 6am–11am | 24.77 c/kWh
+| 11am–4pm | 24.77 c/kWh
+| 12am–6am | 4.99 c/kWh
+|===
+
+As a plan file, `plans/current-tou.yaml`:
+
+[source,yaml]
+----
+id: current-tou                                                   # <1>
+name: Current tariff
+retailer: AGL
+zone: AUSNET                                                      # <2>
+gstInclusive: true                                                # <3>
+charges:
+  - type: dailySupply
+    cents: 123.20
+  - type: timeOfUse
+    bands:                                                        # <4>
+      - { from: "00:00", to: "06:00", days: ALL, cents: 4.99 }
+      - { from: "06:00", to: "11:00", days: ALL, cents: 24.77 }
+      - { from: "11:00", to: "16:00", days: ALL, cents: 24.77 }
+      - { from: "16:00", to: "21:00", days: ALL, cents: 49.54 }
+      - { from: "21:00", to: "24:00", days: ALL, cents: 24.77 }
+----
+<1> Unique. It is how the plan is identified, so keep it stable.
+<2> Your distribution zone. See xref:tariff-reference.adoc#zones[the list].
+<3> Whether the rates you have typed already include GST. See <<gst>>.
+<4> Bands must cover the whole day exactly once. See <<tiling>>.
+
+== Reading rates off a bill
+
+Copy the numbers as printed, in cents, and set `gstInclusive` to match.
+
+Watch for these:
+
+Times are 24-hour::
+"4pm–9pm" becomes `from: "16:00", to: "21:00"`. Quote them, or YAML will read `16:00` as a
+sexagesimal number.
+
+The end of the day is `"24:00"`::
+An evening band runs `to: "24:00"`, not `to: "00:00"`. Both are accepted — a band whose end is
+earlier than its start is treated as wrapping past midnight — but `"24:00"` says what you mean.
+
+Bands are half-open::
+A band `16:00`–`21:00` includes the half hour beginning at 16:00 and excludes the one beginning at
+21:00. Consumption at exactly 9pm is priced by the next band.
+
+[#tiling]
+== Bands must tile the day
+
+Every minute of every day must be priced by exactly one band. A plan with a gap or an overlap is
+rejected when it loads, with a message naming the day and the time:
+
+----
+Plan 'gappy' is invalid: MONDAY is not priced from 06:00
+----
+
+This is checked by testing all seven days against all 1,440 minutes, so it holds for any
+combination of weekday and weekend bands, not just simple cases.
+
+A tariff written as one window spanning midnight is fine:
+
+[source,yaml]
+----
+- { from: "21:00", to: "11:00", days: ALL, cents: 22.60 }
+----
+
+So is the same thing split into two, which is how published data usually expresses it:
+
+[source,yaml]
+----
+- { from: "21:00", to: "24:00", days: ALL, cents: 22.60 }
+- { from: "00:00", to: "11:00", days: ALL, cents: 22.60 }
+----
+
+[#gst]
+== GST
+
+Rates in a plan file are stored inclusive of GST, because that is how bills are printed.
+
+If you are copying rates from a source that excludes GST — published product reference data does —
+set `gstInclusive: false` and the rates are grossed up by 1.1 when the file loads. Do not do the
+multiplication yourself as well.
+
+== Weekends and public holidays
+
+`days` accepts `ALL`, `WEEKDAYS`, `WEEKENDS` or `BUSINESS_DAYS`. `ALL` is the default and almost
+certainly what you want in Victoria: published Victorian tariffs apply their peak window every
+day, including weekends and public holidays.
+
+== When a plan file is broken
+
+One bad file does not hide the others. The page lists the failures by filename and carries on with
+the plans that loaded.
+
+== See also
+
+* xref:tariff-reference.adoc[Tariff reference] — every charge type, with its fields.
