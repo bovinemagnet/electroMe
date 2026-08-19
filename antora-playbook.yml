@@ -1,0 +1,25 @@
+site:
+  title: electroMe
+  start_page: electrome::index.adoc
+
+content:
+  sources:
+    - url: .
+      start_path: src/docs
+      branches: HEAD
+
+asciidoc:
+  attributes:
+    experimental: ''
+    source-highlighter: highlight.js
+    table-caption: false
+    idprefix: ''
+    idseparator: '-'
+
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+
+output:
+  dir: build/docs/site

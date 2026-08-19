@@ -1,0 +1,58 @@
+= electroMe
+Paul Snow
+:toc: preamble
+
+Work out which retail electricity plan actually costs you least, using your own half-hourly
+consumption data.
+
+A time-of-use tariff charges differently depending on when you use power, so two households on the
+same plan pay very different effective rates. The only way to know which plan suits you is to
+price your consumption, half hour by half hour. That is what this does.
+
+== Quick start
+
+[source,bash]
+----
+# Put your interval-data CSV in the project root, then:
+gradle21w quarkusDev
+----
+
+Open http://localhost:8080.
+
+See the documentation for how to export your data, define a tariff, and read the result.
+
+== Documentation
+
+[source,bash]
+----
+gradle21w antora
+----
+
+The site is written to `build/docs/site`; open `index.html`. Sources are in `src/docs`.
+
+== Build
+
+[source,bash]
+----
+gradle21w clean test     # the whole suite
+gradle21w quarkusDev     # development mode, Dev UI at /q/dev-ui
+----
+
+`gradle21w` runs the build on Java 21, which is what the toolchain targets.
+
+== Layout
+
+[cols="1,3"]
+|===
+| `core` | Domain model, tariff model and costing engine. Pure Java, no dependencies.
+| `ingest` | Reads interval-data CSV and plan YAML.
+| `web` | Quarkus, Qute, HTMX and ECharts.
+| `plans` | Tariff definitions, one YAML file each.
+| `src/docs` | Antora documentation sources.
+| `docs/superpowers` | Design spec and implementation plans.
+|===
+
+== A note on your data
+
+Your interval export identifies you: it carries your account number and NMI, and it reveals when
+you are home. `.gitignore` excludes `*.csv` for that reason. Keep it that way.

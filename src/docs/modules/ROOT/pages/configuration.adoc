@@ -1,0 +1,71 @@
+= Configuration
+:description: Settings in application.properties, and how paths are resolved.
+
+Settings live in `web/src/main/resources/application.properties`. Every one can be overridden on
+the command line with `-D`, or by an environment variable.
+
+== electroMe settings
+
+[cols="2,1,3"]
+|===
+| Property | Default | Meaning
+
+| `electrome.usage.csv`
+| `../MyUsageData_19-08-2026.csv`
+| Your interval data file. See <<paths>>.
+
+| `electrome.plans.dir`
+| `../plans`
+| Directory of plan YAML files. Every `.yaml` or `.yml` in it is loaded.
+
+| `electrome.default-window-days`
+| `365`
+| How far back the date range reaches when the page first opens. Clamped to the data you actually
+have.
+|===
+
+== Quarkus settings
+
+[cols="2,1,3"]
+|===
+| Property | Default | Meaning
+
+| `quarkus.http.port` | `8080` | Port the application listens on.
+| `quarkus.qute.property-not-found-strategy` | `throw-exception` | Deliberate: a typo in a template
+should fail loudly during development rather than render an empty string.
+|===
+
+== Overriding at run time
+
+[source,bash]
+----
+gradle21w quarkusDev -Dquarkus.args="" \
+  -Delectrome.usage.csv=/Users/me/Downloads/usage.csv
+----
+
+Or by environment variable, uppercased with dots as underscores:
+
+[source,bash]
+----
+ELECTROME_USAGE_CSV=/Users/me/Downloads/usage.csv gradle21w quarkusDev
+----
+
+[#paths]
+== How relative paths are resolved
+
+A relative path is tried against the working directory, then against each parent directory in
+turn, until the file is found.
+
+This is not a convenience. The working directory is not stable across the ways the application
+runs: tests start in the module directory, development mode starts in `build/classes/java/main`,
+and a packaged build starts wherever you launched it. A plain relative path would resolve
+differently each time and present as "no data found" rather than as a path problem.
+
+Absolute paths are used exactly as given.
+
+== Startup behaviour when files are missing
+
+Neither the usage file nor the plans directory is required for the application to start. A missing
+or unreadable file is reported on the page, naming the absolute path it looked for, rather than
+failing the boot. Someone who has not yet exported their data should get an explanation, not a
+stack trace.

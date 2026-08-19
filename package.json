@@ -1,0 +1,13 @@
+{
+  "name": "electrome-docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Antora documentation toolchain for electroMe",
+  "scripts": {
+    "docs": "antora antora-playbook.yml"
+  },
+  "devDependencies": {
+    "@antora/cli": "3.1.10",
+    "@antora/site-generator": "3.1.10"
+  }
+}

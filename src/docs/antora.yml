@@ -1,0 +1,6 @@
+name: electrome
+title: electroMe
+version: '0.0.0'
+start_page: index.adoc
+nav:
+  - modules/ROOT/nav.adoc

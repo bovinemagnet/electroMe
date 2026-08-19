@@ -1,0 +1,145 @@
+= Tariff reference
+:description: Every charge type a plan file can contain, and the fields each takes.
+
+A plan file has identity fields and a list of `charges`. This page documents both.
+
+== Plan fields
+
+[cols="1,1,3"]
+|===
+| Field | Required | Meaning
+
+| `id` | yes | Unique identifier. Keep it stable; it is how the plan is referred to.
+| `name` | yes | Display name, shown in the comparison.
+| `retailer` | yes | Who sells it. Use `Unknown` if you are still finding out.
+| `zone` | yes | Distribution zone. See <<zones>>.
+| `gstInclusive` | no | Whether the rates below include GST. Defaults to `true`.
+| `validFrom` | no | ISO date. Omit for unbounded.
+| `validTo` | no | ISO date. Omit for unbounded.
+| `charges` | yes | At least one. See <<charges>>.
+|===
+
+A plan must have exactly one *usage* charge — one of `flatRate`, `timeOfUse` or `tiered` — and at
+most one `dailySupply`.
+
+[#zones]
+== Distribution zones
+
+`AUSNET`, `CITIPOWER`, `POWERCOR`, `UNITED_ENERGY`, `JEMENA`, `OTHER`.
+
+Your zone is determined by where you live, not who you buy from. The first four digits of your NMI
+identify it: `6305` is AusNet.
+
+[#charges]
+== Charge types
+
+=== dailySupply
+
+A fixed charge per day of supply, regardless of consumption. Counted from the distinct calendar
+dates present in your data, so a daylight-saving day still bills as one day.
+
+[source,yaml]
+----
+- type: dailySupply
+  cents: 123.20
+----
+
+=== flatRate
+
+One rate for all consumption.
+
+[source,yaml]
+----
+- type: flatRate
+  cents: 31.98
+----
+
+=== timeOfUse
+
+Usage priced by when it was consumed. Takes a list of `bands`, each with `from`, `to`, optional
+`days` (default `ALL`) and `cents`. Bands must cover the whole day exactly once — see
+xref:defining-a-plan.adoc#tiling[Bands must tile the day].
+
+[source,yaml]
+----
+- type: timeOfUse
+  bands:
+    - { from: "16:00", to: "21:00", days: ALL, cents: 47.64 }
+    - { from: "11:00", to: "16:00", days: ALL, cents: 17.59 }
+    - { from: "21:00", to: "11:00", days: ALL, cents: 22.60 }
+----
+
+`days` accepts `ALL`, `WEEKDAYS`, `WEEKENDS`, `BUSINESS_DAYS`. `BUSINESS_DAYS` excludes public
+holidays; `WEEKDAYS` does not.
+
+=== tiered
+
+Block rates that reset periodically. The last tier must have no `upToKWh` — it is the unbounded
+balance. Thresholds must ascend.
+
+[source,yaml]
+----
+- type: tiered
+  reset: QUARTERLY          # DAILY | MONTHLY | QUARTERLY | ANNUAL
+  tiers:
+    - { upToKWh: 1020, cents: 31.98 }
+    - { cents: 29.50 }
+----
+
+=== demand
+
+A charge on your highest average power draw inside a window, priced per kilowatt per day and
+billed against the single highest half hour in each reset period.
+
+[source,yaml]
+----
+- type: demand
+  from: "16:00"
+  to: "21:00"
+  days: ALL
+  reset: MONTHLY
+  centsPerKWPerDay: 20
+----
+
+[WARNING]
+====
+Demand tariffs are dominated by your worst half hour, not your average. Check the *heaviest day*
+figure in the data-quality panel before assuming one suits you — a single unusual day can carry a
+demand charge for a whole month.
+====
+
+=== solarFeedIn
+
+A credit per kilowatt hour exported. Contributes a negative amount to the bill.
+
+[source,yaml]
+----
+- type: solarFeedIn
+  cents: 3.3
+----
+
+Only meaningful if your data contains export readings, or you are running a solar what-if
+scenario.
+
+=== discount
+
+Applied after every other charge.
+
+[source,yaml]
+----
+- type: discount
+  name: Pay on time
+  basis: PERCENTAGE         # PERCENTAGE | FIXED
+  scope: USAGE              # USAGE | SUPPLY | TOTAL
+  value: 5                  # a percentage, or an amount in cents when basis is FIXED
+  conditional: true         # depends on behaviour, such as paying on time
+----
+
+`scope` decides what the discount applies to. A discount advertised as "5% off" is almost always
+`USAGE` only, not `TOTAL` — check the fine print, because the difference is the supply charge.
+
+== Rounding and precision
+
+Every rate and quantity is held as an exact decimal, and rounding to cents happens once, at
+display. Over 35,000 half-hourly multiplications, accumulating floating-point error would be a
+real source of discrepancies against a printed bill.

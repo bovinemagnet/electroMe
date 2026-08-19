@@ -42,3 +42,28 @@ subprojects {
         options.compilerArgs.add("-parameters")
     }
 }
+
+// ---------------------------------------------------------------------------
+// Documentation
+//
+// Antora is a Node toolchain, so the build shells out to it. The npm install
+// is a separate task with declared inputs and outputs, so it is skipped on
+// every run after the first.
+// ---------------------------------------------------------------------------
+
+val npmInstall by tasks.registering(Exec::class) {
+    description = "Installs the Antora toolchain."
+    inputs.file("package.json")
+    outputs.dir(layout.projectDirectory.dir("node_modules"))
+    commandLine("npm", "install", "--no-audit", "--no-fund", "--silent")
+}
+
+tasks.register<Exec>("antora") {
+    group = "documentation"
+    description = "Builds the documentation site into build/docs/site."
+    dependsOn(npmInstall)
+    inputs.dir(layout.projectDirectory.dir("src/docs"))
+    inputs.file("antora-playbook.yml")
+    outputs.dir(layout.buildDirectory.dir("docs/site"))
+    commandLine("npx", "antora", "antora-playbook.yml")
+}

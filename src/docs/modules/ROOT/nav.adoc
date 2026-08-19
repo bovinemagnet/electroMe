@@ -1,0 +1,11 @@
+* xref:index.adoc[Introduction]
+
+* Using electroMe
+** xref:getting-started.adoc[Getting started]
+** xref:reading-the-dashboard.adoc[Reading the dashboard]
+** xref:what-if.adoc[What-if modelling]
+
+* Reference
+** xref:defining-a-plan.adoc[Defining a plan]
+** xref:tariff-reference.adoc[Tariff reference]
+** xref:configuration.adoc[Configuration]
