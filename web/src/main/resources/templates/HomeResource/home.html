@@ -52,6 +52,8 @@
 
 <main id="dashboard"><p class="loading">Costing {planCount} plans against your usage&hellip;</p></main>
 
+<section id="scenarios" hx-get="/fragments/scenarios" hx-trigger="load" hx-swap="innerHTML"></section>
+
 <aside id="quality" hx-get="/fragments/quality" hx-trigger="load" hx-swap="innerHTML"></aside>
 
 <footer style="margin-top:8px">

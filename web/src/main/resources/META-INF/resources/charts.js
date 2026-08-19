@@ -9,7 +9,8 @@
   var FORMATTERS = {
     '@kW': function (v) { return Number(v).toFixed(2) + ' kW'; },
     '@kWh': function (v) { return Number(v).toFixed(1) + ' kWh'; },
-    '@dollars': function (v) { return '$' + Number(v).toFixed(2); }
+    '@dollars': function (v) { return '$' + Number(v).toFixed(2); },
+    '@dollarLabel': function (p) { return '$' + Number(p.value).toFixed(0); }
   };
 
   function token(name) {

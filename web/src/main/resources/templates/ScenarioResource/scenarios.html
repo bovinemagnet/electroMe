@@ -1,0 +1,65 @@
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">What would change the answer</p>
+  <p class="explain">
+    Each scenario is re-costed against every plan and scored against the cheapest plan available
+    <em>under that scenario</em> &mdash; part of the value of a battery is that it changes which
+    tariff suits you. Figures are scaled to a year from the {range.days()}-day window above,
+    against a baseline of {money:dollars(baselineBest)} on {baselinePlan}.
+  </p>
+
+  <form class="scenario-controls"
+        hx-get="/fragments/scenarios"
+        hx-target="#scenarios"
+        hx-trigger="change"
+        hx-swap="innerHTML"
+        hx-indicator="#scenario-busy">
+    <input type="hidden" name="from" value="{range.from}">
+    <input type="hidden" name="to" value="{range.to}">
+    <label>Solar
+      <input type="number" name="solarKW" value="{solarKW}" min="0" max="30" step="0.1"> kW
+    </label>
+    <label>Battery
+      <input type="number" name="batteryKWh" value="{batteryKWh}" min="0" max="50" step="0.5"> kWh
+    </label>
+    <label>Shift out of peak
+      <input type="number" name="shiftPercent" value="{shiftPercent}" min="0" max="100" step="5"> %
+    </label>
+    <span id="scenario-busy" class="htmx-indicator">Modelling&hellip;</span>
+  </form>
+
+  <div class="chart" style="height:230px" data-chart="{chart}"></div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Scenario</th><th>Best plan under it</th>
+          <th class="right">Bill for this window</th><th class="right">Saving a year</th>
+        </tr>
+      </thead>
+      <tbody>
+      {#for outcome in outcomes}
+        <tr class="{#if outcome.worthwhile()}cheapest{/if}">
+          <td><div class="plan-name">{outcome.label}</div></td>
+          <td>
+            {outcome.bestPlanName()}
+            {#if outcome.changesPlan(baselinePlan)}<span class="best-tag">SWITCH</span>{/if}
+          </td>
+          <td class="right num">{money:dollars(outcome.scenarioBest)}</td>
+          <td class="right num" style="font-weight:600; color:{#if outcome.worthwhile()}var(--offpeak){#else}var(--muted){/if}">
+            {money:dollars(outcome.saving)}
+          </td>
+        </tr>
+      {/for}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="explain" style="margin:14px 0 0">
+    Solar output assumes a cloudless sky throughout, so treat the solar and battery figures as an
+    upper bound rather than a forecast. The battery is modelled as a simple controller that
+    charges in the cheapest band and discharges in the dearest &mdash; not a perfect-foresight
+    optimiser, because that is not what a real unit does. One consequence: with both solar and a
+    grid-charge window it fills overnight and exports the midday surplus rather than storing it.
+  </p>
+</section>
