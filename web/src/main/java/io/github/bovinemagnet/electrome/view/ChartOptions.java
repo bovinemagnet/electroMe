@@ -205,6 +205,37 @@ public final class ChartOptions {
         return value.signum() == 0 ? BigDecimal.ONE : value;
     }
 
+    /** Annual saving per scenario, largest first. */
+    public static Map<String, Object> scenarioSavings(
+            List<io.github.bovinemagnet.electrome.app.ScenarioOutcome> outcomes) {
+        var sorted = new ArrayList<>(outcomes);
+        sorted.sort(java.util.Comparator.comparing(
+                io.github.bovinemagnet.electrome.app.ScenarioOutcome::saving));
+
+        var labels = new ArrayList<String>();
+        var values = new ArrayList<BigDecimal>();
+        for (var outcome : sorted) {
+            labels.add(outcome.label());
+            values.add(outcome.saving());
+        }
+
+        var option = new LinkedHashMap<String, Object>();
+        option.put("tooltip", Map.of("trigger", "axis",
+                "axisPointer", Map.of("type", "shadow"), "valueFormatter", "@dollars"));
+        option.put("grid", Map.of("left", 240, "right", 60, "top", 12, "bottom", 36));
+        option.put("xAxis", Map.of("type", "value", "name", "Saving a year",
+                "nameLocation", "middle", "nameGap", 26,
+                "nameTextStyle", Map.of("fontSize", 11)));
+        option.put("yAxis", Map.of("type", "category", "data", labels,
+                "axisLabel", Map.of("width", 228, "overflow", "break", "fontSize", 11)));
+        option.put("series", List.of(Map.of(
+                "type", "bar", "data", values, "barMaxWidth", 26,
+                "label", Map.of("show", true, "position", "right",
+                        "formatter", "@dollarLabel", "fontSize", 11),
+                "itemStyle", Map.of("color", "@offpeak", "borderRadius", List.of(0, 3, 3, 0)))));
+        return option;
+    }
+
     /** Monthly consumption, for year-on-year comparison. */
     public static Map<String, Object> monthly(SortedMap<YearMonth, BigDecimal> monthlyKWh) {
         var labels = new ArrayList<String>();

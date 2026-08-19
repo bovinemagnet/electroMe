@@ -232,6 +232,19 @@ tr.cheapest td .plan-name { color: var(--accent); }
 .finding .title { font-size: 13px; font-weight: 600; }
 .finding .body { font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
 
+.scenario-controls {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 16px;
+  padding: 12px 14px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px;
+}
+.scenario-controls label {
+  display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted);
+}
+.scenario-controls input {
+  width: 5.5rem; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--panel); color: var(--fg); min-height: 34px;
+  font-family: 'Plex Mono', ui-monospace, monospace; font-size: 13px;
+}
+
 .loading { color: var(--muted); }
 .htmx-indicator { display: none; color: var(--muted); margin-left: 10px; font-size: 12px; }
 .htmx-request .htmx-indicator, .htmx-request.htmx-indicator { display: inline; }
