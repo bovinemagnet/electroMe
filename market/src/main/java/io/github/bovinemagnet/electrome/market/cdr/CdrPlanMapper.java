@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
@@ -104,6 +105,50 @@ public final class CdrPlanMapper {
             throw new UnmappablePlanException(planId, e.getMessage());
         }
         return plan;
+    }
+
+    /**
+     * Text that states something a household must own or join to be offered a plan.
+     *
+     * <p>Every eligibility entry in the Victorian data carries {@code type: OTHER}, so the
+     * standard's enum is as useless here as it is for time-of-use bands, and classification has
+     * to come from the free text.
+     *
+     * <p>Most of that text is boilerplate — being in the right distribution zone, having an
+     * applicable network tariff, having a smart meter, being a residential customer. Flagging on
+     * its mere presence marks 99% of plans and therefore says nothing. These patterns pick out
+     * the real requirements instead, and on a live harvest separate about a fifth of plans from
+     * the rest.
+     */
+    private static final java.util.regex.Pattern MATERIAL_REQUIREMENT =
+            java.util.regex.Pattern.compile(
+                    "solar panel|solar pv|battery|electric vehicle|\\bev\\b|bundled with"
+                            + "|member|netflix|concession|must have an",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * The requirements a household must meet to be offered this plan.
+     *
+     * <p>Read separately from the tariff, because it does not affect what the plan costs — it
+     * affects whether you can have it. Several of the cheapest published plans require solar, a
+     * battery, an electric vehicle or a membership, and ranking those alongside plans anyone can
+     * sign up to, with no distinction, would present a saving the household cannot take.
+     */
+    public static List<String> requirementsOf(String detailJson) {
+        JsonNode contract;
+        try {
+            contract = MAPPER.readTree(detailJson).path("data").path("electricityContract");
+        } catch (IOException e) {
+            return List.of();
+        }
+        var conditions = new ArrayList<String>();
+        for (JsonNode entry : contract.path("eligibility")) {
+            String information = entry.path("information").asText("").trim();
+            if (!information.isEmpty() && MATERIAL_REQUIREMENT.matcher(information).find()) {
+                conditions.add(information);
+            }
+        }
+        return List.copyOf(conditions);
     }
 
     /**

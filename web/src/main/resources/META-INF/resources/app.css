@@ -194,6 +194,12 @@ tr.cheapest td .plan-name { color: var(--accent); }
   background: var(--accent-soft); color: var(--accent);
   font-size: 11px; font-weight: 700; letter-spacing: 0.04em; margin-left: 9px;
 }
+.conditional {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--warn); color: var(--warn); font-size: 10.5px; font-weight: 600;
+  cursor: help; white-space: nowrap;
+}
+
 .stack { display: flex; height: 26px; border-radius: 4px; overflow: hidden; min-width: 220px; }
 .stack.slim { height: 10px; }
 .stack > span { display: block; height: 100%; }

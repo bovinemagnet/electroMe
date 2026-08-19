@@ -6,7 +6,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -30,7 +32,12 @@ public final class MarketHarvest {
         this.cache = Objects.requireNonNull(cache, "cache");
     }
 
-    public record HarvestResult(List<Plan> plans, HarvestReport report) {}
+    /**
+     * @param conditions eligibility text by plan id, for the plans that carry any. A plan
+     *     absent from this map is one anyone can sign up to.
+     */
+    public record HarvestResult(
+            List<Plan> plans, HarvestReport report, Map<String, List<String>> conditions) {}
 
     public HarvestResult harvest(DistributionZone zone) {
         long startedAt = System.nanoTime();
@@ -51,11 +58,12 @@ public final class MarketHarvest {
 
         var mapped = new ArrayList<Plan>();
         var skipped = new ArrayList<String>();
+        var conditions = new ConcurrentHashMap<String, List<String>>();
 
         try (var pool = Executors.newFixedThreadPool(MAX_CONCURRENCY)) {
             var results = new ArrayList<Future<Plan>>();
             for (var candidate : candidates) {
-                results.add(pool.submit(() -> mapOne(candidate, zone)));
+                results.add(pool.submit(() -> mapOne(candidate, zone, conditions)));
             }
             for (int i = 0; i < results.size(); i++) {
                 try {
@@ -75,7 +83,15 @@ public final class MarketHarvest {
         var report = new HarvestReport(
                 brands.size(), listed, candidates.size(), mapped.size(), distinct.size(),
                 skipped, Duration.ofNanos(System.nanoTime() - startedAt));
-        return new HarvestResult(distinct, report);
+        // Only keep conditions for the plans that survived deduplication.
+        var kept = new LinkedHashMap<String, List<String>>();
+        for (var plan : distinct) {
+            var planConditions = conditions.get(plan.id());
+            if (planConditions != null && !planConditions.isEmpty()) {
+                kept.put(plan.id(), planConditions);
+            }
+        }
+        return new HarvestResult(distinct, report, Map.copyOf(kept));
     }
 
     private List<PlanSummary> listAll(RetailerBrand brand) {
@@ -95,7 +111,8 @@ public final class MarketHarvest {
         return all;
     }
 
-    private Plan mapOne(Candidate candidate, DistributionZone zone) {
+    private Plan mapOne(Candidate candidate, DistributionZone zone,
+            Map<String, List<String>> conditions) {
         String planId = candidate.summary().planId();
         String json;
         if (cache.isFresh(planId, candidate.summary().lastUpdated())) {
@@ -104,6 +121,10 @@ public final class MarketHarvest {
             json = client.fetchPlanDetail(candidate.brand(), planId);
             cache.write(planId, json);
             cache.recordLastUpdated(planId, candidate.summary().lastUpdated());
+        }
+        var eligibility = CdrPlanMapper.requirementsOf(json);
+        if (!eligibility.isEmpty()) {
+            conditions.put(planId, eligibility);
         }
         return CdrPlanMapper.map(json, zone);
     }

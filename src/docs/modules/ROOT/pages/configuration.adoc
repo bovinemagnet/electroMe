@@ -22,6 +22,18 @@ the command line with `-D`, or by an environment variable.
 | `365`
 | How far back the date range reaches when the page first opens. Clamped to the data you actually
 have.
+
+| `electrome.market.enabled`
+| `true`
+| Whether the xref:market-plans.adoc[market harvest] is offered. Set `false` to hide it entirely.
+
+| `electrome.market.zone`
+| `AUSNET`
+| Which distribution network to harvest plans for.
+
+| `electrome.market.cache-dir`
+| `../.cdr-cache`
+| Where harvested plan responses are cached. Gitignored.
 |===
 
 == Quarkus settings

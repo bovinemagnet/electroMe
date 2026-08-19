@@ -239,6 +239,55 @@ class CdrPlanMapperTest {
                 .hasMessageContaining("rateBlockUType");
     }
 
+    // ---------- eligibility ----------
+
+    @Test
+    void picksOutRequirementsAHouseholdMustActuallyMeet() {
+        var json = """
+                {"data": {"electricityContract": {"eligibility": [
+                  {"type": "OTHER", "information":
+                    "Offer only available to customers with solar panels, battery and smart meter."},
+                  {"type": "OTHER", "information":
+                    "You must have an Electric Vehicle charging at your property."},
+                  {"type": "OTHER", "information":
+                    "Available to both existing and new Netflix customers, 18 years or over."}]}}}
+                """;
+        assertThat(CdrPlanMapper.requirementsOf(json)).hasSize(3);
+    }
+
+    @Test
+    void ignoresTheBoilerplateThatNearlyEveryPlanCarries() {
+        // Flagging on the mere presence of an eligibility entry marks 99% of published plans
+        // and therefore tells a reader nothing at all.
+        var json = """
+                {"data": {"electricityContract": {"eligibility": [
+                  {"type": "OTHER", "information":
+                    "This offer is available to customers within the relevant distribution zone
+                     with the applicable network tariff and meter type"},
+                  {"type": "OTHER", "information": "Generally available"},
+                  {"type": "OTHER", "information": "Offer only available to residential customers."},
+                  {"type": "OTHER", "information":
+                    "This plan is available to residential customers with an eligible electricity
+                     smart meter."}]}}}
+                """.replace("\n                     ", " ");
+        assertThat(CdrPlanMapper.requirementsOf(json)).isEmpty();
+    }
+
+    @Test
+    void aPlanWithNoEligibilityBlockHasNoRequirements() throws IOException {
+        assertThat(CdrPlanMapper.requirementsOf("{\"data\": {\"electricityContract\": {}}}"))
+                .isEmpty();
+        assertThat(CdrPlanMapper.requirementsOf("not json")).isEmpty();
+    }
+
+    @Test
+    void theLiveFixtureRequiresSolar() throws IOException {
+        // The recorded Origin plan requires a net-metered solar PV system, which is exactly the
+        // kind of condition that must not be hidden behind an attractive headline rate.
+        assertThat(CdrPlanMapper.requirementsOf(fixture("plan-detail-tou.json")))
+                .anySatisfy(c -> assertThat(c).containsIgnoringCase("solar"));
+    }
+
     @Test
     void rejectsMalformedJsonWithoutLeakingAStackTrace() {
         assertThatThrownBy(() -> CdrPlanMapper.map("not json at all", DistributionZone.AUSNET))
