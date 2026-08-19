@@ -27,6 +27,10 @@ bin/
 # OS
 .DS_Store
 
+# Implementation plans stay local. They are working artefacts for building the
+# thing, not documentation of it; the design specs and src/docs are the record.
+docs/superpowers/plans/
+
 # Node toolchain for the documentation build
 node_modules/
 
