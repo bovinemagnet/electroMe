@@ -1,0 +1,10 @@
+id: flat
+name: Flat rate
+retailer: Test
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: flatRate
+    cents: 25

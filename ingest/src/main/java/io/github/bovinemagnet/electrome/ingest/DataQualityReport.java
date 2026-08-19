@@ -68,10 +68,10 @@ public record DataQualityReport(
             out.add(longDays.size() + " days carry more intervals than usual, including "
                     + longDays.get(0));
         }
-        if (!outlierDays.isEmpty()) {
-            out.add(outlierDays.size() + " days consumed unusually heavily, including "
-                    + outlierDays.get(0) + ". These dominate any demand-based tariff");
-        }
+        // Deliberately no line for outlierDays. On real data the Tukey fence flags around
+        // one day in eight, which is arithmetically correct on a right-skewed distribution
+        // and useless as a finding. The dates stay available to callers, which report the
+        // heaviest day against the median instead.
         if (rateTypes.size() > 1) {
             out.add("Multiple register types present: " + String.join(", ", rateTypes));
         }

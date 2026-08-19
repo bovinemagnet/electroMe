@@ -1,0 +1,34 @@
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">About your data</p>
+  <p class="explain">
+    {money:count(report.readingsParsed)} intervals read from {money:count(report.rowsRead)} rows. Nothing here invalidates
+    a comparison &mdash; it explains small differences against a printed bill.
+  </p>
+  <div class="three-up">
+    {#for finding in findings}
+    <div class="finding">
+      <span class="dot" style="background:var(--midday)"></span>
+      <div><div class="body">{finding}</div></div>
+    </div>
+    {/for}
+    {#if heaviestDay != ''}
+    <div class="finding">
+      <span class="dot" style="background:var(--shoulder)"></span>
+      <div>
+        <div class="title">Heaviest day {heaviestKWh} kWh</div>
+        <div class="body">
+          On {heaviestDay}, against a median of {medianKWh} kWh. Irrelevant to a time-of-use
+          comparison, decisive for a demand tariff.
+        </div>
+      </div>
+    </div>
+    {/if}
+    {#if findings.isEmpty()}
+    <div class="finding">
+      <span class="dot" style="background:var(--offpeak)"></span>
+      <div><div class="title">Nothing to report</div>
+      <div class="body">Every interval is an actual meter read, with no gaps or duplicates.</div></div>
+    </div>
+    {/if}
+  </div>
+</section>
