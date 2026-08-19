@@ -32,6 +32,16 @@ subprojects {
         useJUnitPlatform()
         testLogging {
             events("passed", "skipped", "failed")
+            showStandardStreams = true
+        }
+        // Opt-in switches have to reach the forked test JVM, and have to be declared as
+        // inputs or Gradle will serve a cached result from the previous setting.
+        listOf("electrome.live", "electrome.usage.csv", "electrome.cache").forEach { key ->
+            val value = providers.systemProperty(key)
+            inputs.property(key, value.orElse(""))
+            if (value.isPresent) {
+                systemProperty(key, value.get())
+            }
         }
     }
 
