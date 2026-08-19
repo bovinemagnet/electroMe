@@ -216,10 +216,21 @@ class PlanYamlLoaderTest {
     }
 
     @Test
-    void everyShippedPlanFileLoads() {
-        var plans = PlanYamlLoader.loadDirectory(Path.of("..", "plans"));
+    void everyFixturePlanFileLoads() {
+        // Reads the test's own fixtures rather than the application's plans/ directory, which
+        // the user is meant to add to; asserting a count against that would break on first use.
+        var plans = PlanYamlLoader.loadDirectory(Path.of("src/test/resources/plans"));
         assertThat(plans).hasSize(2);
         assertThat(plans).extracting(Plan::id)
-                .containsExactly("current-tou", "vdo-ausnet-2026-27");
+                .containsExactly("reference-tou", "vdo-ausnet-2026-27");
+    }
+
+    @Test
+    void everyShippedPlanFileLoads() {
+        // The application's own plans/ directory must always be loadable, but its contents
+        // are the user's, so this asserts validity rather than a count.
+        var shipped = PlanYamlLoader.loadDirectory(Path.of("..", "plans"));
+        assertThat(shipped).isNotEmpty();
+        assertThat(shipped).allSatisfy(p -> assertThat(p.charges()).isNotEmpty());
     }
 }

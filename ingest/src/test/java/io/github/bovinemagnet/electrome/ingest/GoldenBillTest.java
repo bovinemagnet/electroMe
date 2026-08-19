@@ -20,7 +20,14 @@ import org.junit.jupiter.api.Test;
 
 class GoldenBillTest {
 
-    private static final Path PLANS = Path.of("..", "plans");
+    /**
+     * The tests own their tariff fixtures.
+     *
+     * <p>They used to read the application's live {@code plans/} directory, which made the
+     * suite depend on a directory the user is meant to edit: adding a third plan broke a test
+     * that asserted there were two.
+     */
+    private static final Path PLANS = Path.of("src/test/resources/plans");
     private static final CostingEngine ENGINE = new CostingEngine();
 
     private static Path householdData() {
@@ -45,7 +52,7 @@ class GoldenBillTest {
 
     @Test
     void syntheticWeekCostsExactly() throws IOException {
-        var plan = PlanYamlLoader.load(PLANS.resolve("current-tou.yaml"));
+        var plan = PlanYamlLoader.load(PLANS.resolve("reference-tou.yaml"));
         UsageImport imported;
         try (var reader = new InputStreamReader(
                 GoldenBillTest.class.getResourceAsStream("/golden-week.csv"),
@@ -78,7 +85,7 @@ class GoldenBillTest {
                 "Household interval data not present at " + csv.toAbsolutePath()
                         + "; pass -Delectrome.usage.csv=<path> to run this test");
 
-        var plan = PlanYamlLoader.load(PLANS.resolve("current-tou.yaml"));
+        var plan = PlanYamlLoader.load(PLANS.resolve("reference-tou.yaml"));
         var imported = UsageCsvReader.read(csv);
         var year = new DateRange(LocalDate.of(2025, 8, 19), LocalDate.of(2026, 8, 18));
         var bill = ENGINE.cost(imported.usage(), plan, year);

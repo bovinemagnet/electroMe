@@ -1,0 +1,17 @@
+# Victorian Default Offer, AusNet distribution zone, three-period time of use.
+# Published by the Essential Services Commission, GST inclusive.
+id: vdo-ausnet-2026-27
+name: Victorian Default Offer 2026-27, three-period time of use
+retailer: Victorian Default Offer
+zone: AUSNET
+gstInclusive: true
+validFrom: 2026-07-01
+validTo: 2027-06-30
+charges:
+  - type: dailySupply
+    cents: 128.24
+  - type: timeOfUse
+    bands:
+      - { from: "16:00", to: "21:00", days: ALL, cents: 47.64 }
+      - { from: "11:00", to: "16:00", days: ALL, cents: 17.59 }
+      - { from: "21:00", to: "11:00", days: ALL, cents: 22.60 }

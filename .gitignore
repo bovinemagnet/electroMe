@@ -27,19 +27,15 @@ bin/
 # OS
 .DS_Store
 
-# Working artefacts for building the thing, not documentation of it. The record
-# that belongs here is src/docs and the code. These stay local.
-docs/superpowers/
-design-phase2/
-design-market/
-
 # Node toolchain for the documentation build
 node_modules/
 
 # CDR response cache
 .cdr-cache/
 build/live-cdr-cache/
+
+# Working artefacts for building the thing, not documentation of it. What belongs
+# here is the code and src/docs. These stay on disk, untracked.
 design-market/
 design-phase2/
-docs/superpowers/specs/
-plans/
+docs/superpowers/
