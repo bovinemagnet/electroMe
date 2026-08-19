@@ -1,0 +1,17 @@
+# The tariff currently in force at the premises.
+# Retailer and plan name are not yet known; update when the bill is to hand.
+id: current-tou
+name: Current tariff
+retailer: Unknown
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 123.20
+  - type: timeOfUse
+    bands:
+      - { from: "00:00", to: "06:00", days: ALL, cents: 4.99 }
+      - { from: "06:00", to: "11:00", days: ALL, cents: 24.77 }
+      - { from: "11:00", to: "16:00", days: ALL, cents: 24.77 }
+      - { from: "16:00", to: "21:00", days: ALL, cents: 49.54 }
+      - { from: "21:00", to: "24:00", days: ALL, cents: 24.77 }
