@@ -33,9 +33,12 @@ public class PlanQueryService {
 
     @Inject MarketPlanSource market;
 
-    /** Uses the harvested eligibility conditions. */
+    /** Uses the harvested eligibility conditions, fees, and the last harvest's own gaps. */
     public PlanPage apply(Comparison comparison, PlanQuery query) {
-        return apply(comparison, query, market.conditions());
+        return apply(comparison, query, market.conditions(),
+                market.lastReport().map(r -> r.skipReasons()).orElse(List.of()),
+                market.lastReport().map(r -> r.skipped().size()).orElse(0),
+                market.extras().keySet());
     }
 
     /**
@@ -48,8 +51,43 @@ public class PlanQueryService {
      */
     public PlanPage apply(
             Comparison comparison, PlanQuery query, Map<String, List<String>> conditions) {
+        return apply(comparison, query, conditions, List.of(), 0, java.util.Set.of());
+    }
+
+    public PlanPage apply(
+            Comparison comparison, PlanQuery query, Map<String, List<String>> conditions,
+            List<String> unpriceableReasons, int unpriceable) {
+        return apply(comparison, query, conditions, unpriceableReasons, unpriceable,
+                java.util.Set.of());
+    }
+
+    /**
+     * @param unpriceableReasons why the harvester could not price some plans, counted
+     * @param unpriceable how many plans those reasons account for, which is the size of the
+     *     blind spot behind any verdict drawn from what remains
+     */
+    public PlanPage apply(
+            Comparison comparison, PlanQuery query, Map<String, List<String>> conditions,
+            List<String> unpriceableReasons, int unpriceable,
+            java.util.Set<String> planIdsWithUncostedFees) {
 
         var everything = comparison.results();
+
+        // What each plan asks of a household, read once and carried, so a row and the verdict
+        // can never disagree about whether a plan is available to this reader.
+        var notes = new java.util.LinkedHashMap<String, PlanNotes>();
+        var required = new java.util.LinkedHashMap<String, java.util.Set<Requirement>>();
+        for (var result : everything) {
+            String id = result.bill().plan().id();
+            var eligibility = conditions.getOrDefault(id, List.of());
+            var requirements = Requirement.of(eligibility);
+            required.put(id, requirements);
+            notes.put(id, new PlanNotes(
+                    requirements,
+                    eligibility,
+                    planIdsWithUncostedFees.contains(id),
+                    result.bill().complete()));
+        }
 
         // Every retailer present, not only those surviving the filter: a control that removes
         // its own options as you use it cannot be used to widen a search.
@@ -72,6 +110,8 @@ public class PlanQueryService {
 
         var matched = new ArrayList<>(eligible.stream()
                 .filter(matchesRequirements(query, conditions))
+                .filter(withinDiscountPreference(query))
+                .filter(savesAtLeast(query))
                 .toList());
 
         matched.sort(order(query));
@@ -87,7 +127,77 @@ public class PlanQueryService {
                 : List.copyOf(matched.subList(0, query.limit()));
 
         return new PlanPage(query, shown, matched.size(), everything.size(),
-                hiddenByRequirements, withRequirements, List.copyOf(retailers));
+                hiddenByRequirements, withRequirements, List.copyOf(retailers),
+                verdict(everything, query, required, unpriceableReasons, unpriceable),
+                notes);
+    }
+
+    /**
+     * The cheapest plan this household could actually sign up to.
+     *
+     * <p>Drawn from everything costed rather than from the filtered rows. Which plan is
+     * cheapest is a fact about the market, not about what the reader happens to have typed
+     * into the search box, and a verdict that moved as you browsed would be worthless.
+     *
+     * <p>A plan asking for equipment the household does not have is passed over, but the
+     * sentence still admits that something cheaper exists and could not be taken. Silently
+     * naming the second-cheapest plan as "the cheapest" is the failure this guards against.
+     */
+    private static Verdict verdict(
+            List<PlanResult> everything,
+            PlanQuery query,
+            Map<String, java.util.Set<Requirement>> required,
+            List<String> unpriceableReasons,
+            int unpriceable) {
+
+        PlanResult best = null;
+        PlanResult cheapestOfAll = null;
+        for (var result : everything) {
+            if (cheapestOfAll == null || result.total().compareTo(cheapestOfAll.total()) < 0) {
+                cheapestOfAll = result;
+            }
+            if (!query.canMeet(required.getOrDefault(
+                    result.bill().plan().id(), java.util.Set.of()))) {
+                continue;
+            }
+            if (best == null || result.total().compareTo(best.total()) < 0) {
+                best = result;
+            }
+        }
+        if (best == null) {
+            return new Verdict(null, java.util.Set.of(), true, unpriceable, unpriceableReasons);
+        }
+        boolean nothingCheaperWasBarred =
+                cheapestOfAll == null || cheapestOfAll.total().compareTo(best.total()) >= 0;
+        return new Verdict(
+                best,
+                required.getOrDefault(best.bill().plan().id(), java.util.Set.of()),
+                nothingCheaperWasBarred,
+                unpriceable,
+                unpriceableReasons);
+    }
+
+    /** Drops plans whose total holds only if the household earns a discount. */
+    private static Predicate<PlanResult> withinDiscountPreference(PlanQuery query) {
+        if (!query.excludeConditionalDiscounts()) {
+            return result -> true;
+        }
+        return result -> !result.bill().assumesConditions();
+    }
+
+    /**
+     * Drops plans saving less than the reader asked for.
+     *
+     * <p>A plan with nothing to measure against is kept: no baseline means no saving figure,
+     * and hiding every row because the household has not named its current plan would be a
+     * blank table for a reason the reader could not see.
+     */
+    private static Predicate<PlanResult> savesAtLeast(PlanQuery query) {
+        if (!query.hasMinimumSaving()) {
+            return result -> true;
+        }
+        return result -> !result.comparedToBaseline()
+                || result.savingAgainstBaseline().compareTo(query.minimumSaving()) >= 0;
     }
 
     private static Predicate<PlanResult> matchesSearch(PlanQuery query) {

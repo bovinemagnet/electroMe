@@ -131,7 +131,11 @@ public final class CdrPlanMapper {
     private static final java.util.regex.Pattern MATERIAL_REQUIREMENT =
             java.util.regex.Pattern.compile(
                     "solar panel|solar pv|battery|electric vehicle|\\bev\\b|bundled with"
-                            + "|member|netflix|concession|must have an",
+                            + "|member|netflix|concession|must have an"
+                            // A card is not something a household can simply go and get, and a
+                            // seniors or pensioner offer priced as though anyone could take it
+                            // puts a saving at the top of the ranking that most readers cannot.
+                            + "|senior|pensioner|card ?holder|health care card",
                     java.util.regex.Pattern.CASE_INSENSITIVE);
 
     /**
@@ -387,11 +391,33 @@ public final class CdrPlanMapper {
         if (blocks.tiers().size() == 1) {
             return new FlatRate(blocks.tiers().get(0).centsPerKWh());
         }
+        // Most Victorian block tariffs price every block identically, and then how often the
+        // allowance resets changes nothing. Where the blocks are priced differently it changes
+        // everything — fifteen kilowatt hours at the cheaper rate is a different tariff daily
+        // from quarterly — and a register that states no period gives no way to tell. Refused
+        // rather than guessed at, on the same principle as a capped window.
+        if (!blocks.periodStated() && !blocks.pricedIdentically()) {
+            throw new UnmappablePlanException(planId,
+                    "a volume block states no period and its blocks are priced differently, so "
+                            + "there is no way to tell whether the allowance is daily or "
+                            + "quarterly");
+        }
         return new Tiered(blocks.reset(), blocks.tiers());
     }
 
-    /** Cumulative volume blocks read from a rates array, and how often they start again. */
-    private record Blocks(List<Tier> tiers, ResetPeriod reset) {}
+    /**
+     * Cumulative volume blocks read from a rates array, and how often they start again.
+     *
+     * @param periodStated false when the register gave no period and the reset is this
+     *     mapper's default rather than the retailer's word
+     */
+    private record Blocks(List<Tier> tiers, ResetPeriod reset, boolean periodStated) {
+
+        /** True when every block charges the same, so how often it resets changes nothing. */
+        boolean pricedIdentically() {
+            return tiers.stream().map(Tier::centsPerKWh).distinct().count() <= 1;
+        }
+    }
 
     /**
      * Walks a CDR {@code rates} array into ascending blocks.
@@ -406,6 +432,7 @@ public final class CdrPlanMapper {
     private static Blocks blocks(JsonNode rates, String planId, ResetPeriod defaultReset) {
         var tiers = new ArrayList<Tier>();
         ResetPeriod reset = defaultReset;
+        boolean periodStated = false;
         BigDecimal cumulative = BigDecimal.ZERO;
 
         for (int i = 0; i < rates.size(); i++) {
@@ -418,13 +445,14 @@ public final class CdrPlanMapper {
                 tiers.add(new Tier(cumulative, price));
                 if (rate.hasNonNull("period")) {
                     reset = resetPeriod(rate.get("period").asText(), planId);
+                    periodStated = true;
                 }
             } else {
                 tiers.add(new Tier(null, price));
                 break;
             }
         }
-        return new Blocks(tiers, reset);
+        return new Blocks(tiers, reset, periodStated);
     }
 
     private static ResetPeriod resetPeriod(String iso8601, String planId) {

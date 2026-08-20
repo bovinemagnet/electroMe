@@ -167,6 +167,35 @@ button.primary:hover { color: var(--bg); filter: brightness(1.08); }
 }
 .verdict .badge.dearer { color: var(--peak); }
 
+.criteria .owns { border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px 5px; }
+.criteria .owns legend { font-size: 11px; color: var(--muted); padding: 0 4px; }
+.criteria .owns label, .criteria .tickbox {
+  font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 8px;
+}
+
+/* Row annotations on the ranking: what a total does not say by itself. */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.chip {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  cursor: help;
+  white-space: nowrap;
+}
+.chip.fees { color: var(--warn); border-color: var(--warn); }
+.chip.warn { color: var(--peak); border-color: var(--peak); }
+.verdict-panel { border-left: 3px solid var(--accent); }
+.unpriced { margin-top: 10px; font-size: 13.5px; }
+.unpriced summary { cursor: pointer; color: var(--muted); }
+
 /* A total that only holds if the household earns a conditional discount. */
 .conditional-total {
   color: var(--warn);

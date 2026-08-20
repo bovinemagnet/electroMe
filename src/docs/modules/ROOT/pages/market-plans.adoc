@@ -44,7 +44,9 @@ harvest is close to instant.
 Not every published plan can be mapped. A plan whose rates cannot be read with confidence is
 refused rather than guessed at, and the harvest summary names every reason a plan was skipped, each
 with a count — not just the first few. A truncated list of gaps reads as a complete list of gaps,
-and refusing a plan is only better than mispricing it if you can see that it happened.
+and refusing a plan is only better than mispricing it if you can see that it happened. The same
+count and reasons reappear beside the answer on xref:browsing-plans.adoc[the plan browser],
+because one of the plans refused there could have been the cheapest of all.
 
 Coverage is reported as one percentage: the share of this network's plans the tariff model could
 hold. A mapper that quietly reads a capped free-energy window as unlimited cheap power reports full

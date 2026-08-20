@@ -1,0 +1,11 @@
+# Ranking fixture.
+id: cheapest-open
+name: Cheapest Open
+retailer: Retailer B
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: flatRate
+    cents: 20

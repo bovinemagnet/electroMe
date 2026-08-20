@@ -16,6 +16,9 @@ import java.util.List;
  * @param withRequirements plans needing equipment or a membership among those the other criteria
  *     would have shown, whichever way the requirement filter is set
  * @param retailers every retailer present in the comparison, so the control can offer all of them
+ * @param verdict the answer the table is evidence for, computed over every plan rather than
+ *     the filtered subset: narrowing a search should not change which plan is cheapest
+ * @param notes what each row has to say beyond its total, by plan id
  */
 public record PlanPage(
         PlanQuery query,
@@ -24,11 +27,27 @@ public record PlanPage(
         int total,
         int hiddenByRequirements,
         int withRequirements,
-        List<String> retailers) {
+        List<String> retailers,
+        Verdict verdict,
+        java.util.Map<String, PlanNotes> notes) {
 
     public PlanPage {
         results = List.copyOf(results);
         retailers = List.copyOf(retailers);
+        verdict = verdict == null ? Verdict.none() : verdict;
+        notes = notes == null ? java.util.Map.of() : java.util.Map.copyOf(notes);
+    }
+
+    /** A page from before the ranking had a verdict to offer. */
+    public PlanPage(PlanQuery query, List<PlanResult> results, int matched, int total,
+            int hiddenByRequirements, int withRequirements, List<String> retailers) {
+        this(query, results, matched, total, hiddenByRequirements, withRequirements, retailers,
+                Verdict.none(), java.util.Map.of());
+    }
+
+    /** What this row has to say beyond its total. */
+    public PlanNotes notesFor(PlanResult result) {
+        return notes.getOrDefault(result.bill().plan().id(), PlanNotes.plain());
     }
 
     public boolean empty() {

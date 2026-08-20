@@ -38,10 +38,14 @@ public class BrowserFragmentResource {
             @QueryParam("retailers") List<String> retailers,
             @QueryParam("shape") String shape,
             @QueryParam("sort") String sort,
-            @QueryParam("limit") String limit) {
+            @QueryParam("limit") String limit,
+            @QueryParam("have") List<String> have,
+            @QueryParam("unconditional") String unconditional,
+            @QueryParam("minSaving") String minimumSaving) {
 
         var range = browsing.range(from, to);
-        var query = browsing.query(search, requirements, retailers, shape, sort, limit);
+        var query = browsing.query(search, requirements, retailers, shape, sort, limit,
+                have, unconditional, minimumSaving);
         return Templates.results(browsing.shell(range), browsing.page(range, query));
     }
 

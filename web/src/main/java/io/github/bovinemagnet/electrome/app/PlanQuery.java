@@ -19,6 +19,12 @@ import java.util.Set;
  *
  * @param retailers empty means every retailer
  * @param limit how many rows to show; {@link Integer#MAX_VALUE} for all of them
+ * @param household what the reader says they own, which decides which plans they could
+ *     actually sign up to and therefore which one the verdict may name
+ * @param excludeConditionalDiscounts drops plans whose total depends on the household earning
+ *     a discount, for a reader who would rather compare certainties
+ * @param minimumSaving hides plans saving less than this against the household's own tariff;
+ *     null when no threshold was asked for
  */
 public record PlanQuery(
         String search,
@@ -26,7 +32,10 @@ public record PlanQuery(
         Set<String> retailers,
         PlanShape shape,
         SortBy sort,
-        int limit) {
+        int limit,
+        Set<Requirement> household,
+        boolean excludeConditionalDiscounts,
+        java.math.BigDecimal minimumSaving) {
 
     /**
      * Whether to show plans a household must own or join something to be offered.
@@ -100,6 +109,16 @@ public record PlanQuery(
         shape = shape == null ? PlanShape.ANY : shape;
         sort = sort == null ? SortBy.TOTAL : sort;
         retailers = retailers == null ? Set.of() : Set.copyOf(retailers);
+        household = household == null ? Set.of() : Set.copyOf(household);
+        minimumSaving = minimumSaving != null && minimumSaving.signum() > 0
+                ? minimumSaving
+                : null;
+    }
+
+    /** Criteria from before the household could say what it owns. */
+    public PlanQuery(String search, RequirementFilter requirements, Set<String> retailers,
+            PlanShape shape, SortBy sort, int limit) {
+        this(search, requirements, retailers, shape, sort, limit, Set.of(), false, null);
     }
 
     public static PlanQuery defaults() {
@@ -107,20 +126,102 @@ public record PlanQuery(
                 SortBy.TOTAL, DEFAULT_LIMIT);
     }
 
+    /** True when this household could sign up to a plan asking for these things. */
+    public boolean canMeet(Set<Requirement> required) {
+        for (var requirement : required) {
+            if (!requirement.ownable() || !household.contains(requirement)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Builds from raw query-string text, falling back to a default for anything unreadable. */
     public static PlanQuery of(String search, String requirements, List<String> retailers,
             String shape, String sort, String limit) {
+        return of(search, requirements, retailers, shape, sort, limit, List.of(), null, null);
+    }
+
+    /** Builds from raw query-string text, including what the household says it owns. */
+    public static PlanQuery of(String search, String requirements, List<String> retailers,
+            String shape, String sort, String limit, List<String> have,
+            String excludeConditional, String minimumSaving) {
         return new PlanQuery(
                 search,
                 parse(RequirementFilter.class, requirements, RequirementFilter.OPEN_ONLY),
                 cleaned(retailers),
                 parse(PlanShape.class, shape, PlanShape.ANY),
                 parse(SortBy.class, sort, SortBy.TOTAL),
-                limit(limit));
+                limit(limit),
+                capabilities(have),
+                Boolean.parseBoolean(excludeConditional),
+                amount(minimumSaving));
     }
 
     public PlanQuery withSearch(String replacement) {
-        return new PlanQuery(replacement, requirements, retailers, shape, sort, limit);
+        return new PlanQuery(replacement, requirements, retailers, shape, sort, limit,
+                household, excludeConditionalDiscounts, minimumSaving);
+    }
+
+    /** Anything the reader ticked that this application recognises; the rest is ignored. */
+    private static Set<Requirement> capabilities(List<String> have) {
+        if (have == null) {
+            return Set.of();
+        }
+        var owned = new java.util.LinkedHashSet<Requirement>();
+        for (var value : have) {
+            if (value == null) {
+                continue;
+            }
+            for (var part : value.split(",")) {
+                var requirement = Requirement.parse(part);
+                if (requirement != null && requirement.ownable()) {
+                    owned.add(requirement);
+                }
+            }
+        }
+        return Set.copyOf(owned);
+    }
+
+    /** A threshold that cannot be read is no threshold, not an error page. */
+    private static java.math.BigDecimal amount(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return new java.math.BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    // Qute has no syntax for an enum constant, so the control asks the query for them.
+    public Requirement solar() {
+        return Requirement.SOLAR;
+    }
+
+    public Requirement battery() {
+        return Requirement.BATTERY;
+    }
+
+    public Requirement electricVehicle() {
+        return Requirement.ELECTRIC_VEHICLE;
+    }
+
+    public Requirement membership() {
+        return Requirement.MEMBERSHIP;
+    }
+
+    public Requirement concession() {
+        return Requirement.CONCESSION;
+    }
+
+    public boolean hasHousehold() {
+        return !household.isEmpty();
+    }
+
+    public boolean hasMinimumSaving() {
+        return minimumSaving != null;
     }
 
     public boolean showsAll() {
@@ -139,7 +240,9 @@ public record PlanQuery(
         return !search.isEmpty()
                 || requirements != RequirementFilter.OPEN_ONLY
                 || !retailers.isEmpty()
-                || shape != PlanShape.ANY;
+                || shape != PlanShape.ANY
+                || excludeConditionalDiscounts
+                || minimumSaving != null;
     }
 
     /**
@@ -167,6 +270,13 @@ public record PlanQuery(
             case BLOCK -> active.add("block tariff plans");
             case DEMAND -> active.add("demand charge plans");
             case ANY -> { }
+        }
+        if (excludeConditionalDiscounts) {
+            active.add("no plans relying on a conditional discount");
+        }
+        if (minimumSaving != null) {
+            active.add("saving at least $" + minimumSaving.stripTrailingZeros().toPlainString()
+                    + " against your plan");
         }
         return List.copyOf(active);
     }
@@ -196,6 +306,15 @@ public record PlanQuery(
         }
         if (limit != DEFAULT_LIMIT) {
             parts.add("limit=" + (showsAll() ? "all" : Integer.toString(limit)));
+        }
+        for (var owned : new java.util.TreeSet<>(household)) {
+            parts.add("have=" + owned.name());
+        }
+        if (excludeConditionalDiscounts) {
+            parts.add("unconditional=true");
+        }
+        if (minimumSaving != null) {
+            parts.add("minSaving=" + minimumSaving.stripTrailingZeros().toPlainString());
         }
         return String.join("&", parts);
     }
