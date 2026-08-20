@@ -193,6 +193,8 @@ button.primary:hover { color: var(--bg); filter: brightness(1.08); }
 .chip.fees { color: var(--warn); border-color: var(--warn); }
 .chip.warn { color: var(--peak); border-color: var(--peak); }
 .chip.picked { color: var(--accent); border-color: var(--accent); }
+.rate-col { font-size: 13px; white-space: nowrap; }
+.absent { color: var(--muted); opacity: 0.55; }
 .chip.drop {
   background: none;
   font-family: inherit;

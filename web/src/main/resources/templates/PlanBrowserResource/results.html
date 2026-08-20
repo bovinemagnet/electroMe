@@ -63,7 +63,9 @@
 <section class="panel">
   <p class="eyebrow" style="margin-bottom:4px">What each plan would have cost</p>
   <p class="explain">
-    Your actual half-hourly consumption, priced by each tariff over
+    Rates are as published, in cents; a dash means the plan has no such charge and an asterisk
+    that the rate holds only up to an allowance. Totals are your actual half-hourly consumption,
+    priced by each tariff over
     {shell.window.days()} days to {shell.window.to}. Open a plan to see its bands, its rates and
     anything it requires of you.
   </p>
@@ -100,6 +102,7 @@
           <th class="pick"><span class="sr-only">Compare</span></th>
           <th>Plan</th><th>Retailer</th><th>Shape</th>
           <th class="right">Total</th><th class="right">vs best</th><th class="right">Avg rate</th>
+          {#for column in page.rateColumns}<th class="right rate-col">{column.label()}</th>{/for}
         </tr>
       </thead>
       <tbody>
@@ -137,6 +140,13 @@
             {#if row.cheapest}&mdash;{#else}+{money:dollars(row.differenceFromBest())}{/if}
           </td>
           <td class="right num" style="font-size:13.5px; color:var(--muted)">{money:cents(row.bill().averageCentsPerKWh())}</td>
+          {#let rates=page.ratesFor(row)}
+          {#for column in page.rateColumns}
+          <td class="right num rate-col">
+            {#if rates.has(column)}{money:cents(rates.rate(column))}{#if rates.capped(column)}<abbr class="conditional-total" title="Only up to a daily or monthly allowance; beyond it the rate is {money:cents(rates.beyond(column))}.">*</abbr>{/if}{#else}<span class="absent">&mdash;</span>{/if}
+          </td>
+          {/for}
+          {/let}
         </tr>
       {/for}
       </tbody>

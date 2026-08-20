@@ -90,12 +90,38 @@ public record PlanQuery(
         }
     }
 
+    /**
+     * What the table is ordered by.
+     *
+     * <p>The rate orders sort on the plan's published rate for that part of the day. A plan
+     * that does not charge one at all sorts last rather than first: a tariff with no evening
+     * peak has not got the cheapest evening peak.
+     */
     public enum SortBy {
         TOTAL,
-        PEAK_RATE,
         SUPPLY_CHARGE,
+        OFFPEAK_RATE,
+        MIDDAY_RATE,
+        SHOULDER_RATE,
+        PEAK_RATE,
+        FLAT_RATE,
+        FEED_IN_RATE,
         AVERAGE_RATE,
-        NAME
+        NAME;
+
+        /** The rate this order reads, or null for an order that is not about a rate. */
+        public PlanMatrix.Component component() {
+            return switch (this) {
+                case SUPPLY_CHARGE -> PlanMatrix.Component.DAILY_SUPPLY;
+                case OFFPEAK_RATE -> PlanMatrix.Component.OFFPEAK;
+                case MIDDAY_RATE -> PlanMatrix.Component.MIDDAY;
+                case SHOULDER_RATE -> PlanMatrix.Component.SHOULDER;
+                case PEAK_RATE -> PlanMatrix.Component.PEAK;
+                case FLAT_RATE -> PlanMatrix.Component.FLAT;
+                case FEED_IN_RATE -> PlanMatrix.Component.FEED_IN;
+                case TOTAL, AVERAGE_RATE, NAME -> null;
+            };
+        }
     }
 
     /** The limits the control offers. A value outside them is clamped to the nearest. */

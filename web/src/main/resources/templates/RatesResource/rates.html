@@ -1,0 +1,109 @@
+{#include base}
+{#body}
+
+<form id="criteria" class="criteria" action="/rates" method="get">
+  <input type="hidden" name="from" value="{shell.window.from}">
+  <input type="hidden" name="to" value="{shell.window.to}">
+
+  <label>Search
+    <input type="search" name="search" value="{page.query.search}" placeholder="plan or retailer">
+  </label>
+
+  <label>Eligibility
+    <select name="requirements">
+      <option value="OPEN_ONLY" {#if page.query.requirements.name == 'OPEN_ONLY'}selected{/if}>Anyone can sign up</option>
+      <option value="ANY" {#if page.query.requirements.name == 'ANY'}selected{/if}>All plans</option>
+      <option value="REQUIREMENTS_ONLY" {#if page.query.requirements.name == 'REQUIREMENTS_ONLY'}selected{/if}>Only plans with requirements</option>
+    </select>
+  </label>
+
+  <label>Shape
+    <select name="shape">
+      <option value="ANY" {#if page.query.shape.name == 'ANY'}selected{/if}>Any shape</option>
+      <option value="FLAT" {#if page.query.shape.name == 'FLAT'}selected{/if}>Flat rate</option>
+      <option value="TIME_OF_USE" {#if page.query.shape.name == 'TIME_OF_USE'}selected{/if}>Time of use</option>
+      <option value="BLOCK" {#if page.query.shape.name == 'BLOCK'}selected{/if}>Block</option>
+      <option value="DEMAND" {#if page.query.shape.name == 'DEMAND'}selected{/if}>Demand</option>
+    </select>
+  </label>
+
+  <label>Sort by
+    <select name="sort">
+      <option value="TOTAL" {#if page.query.sort.name == 'TOTAL'}selected{/if}>What it would cost</option>
+      <option value="SUPPLY_CHARGE" {#if page.query.sort.name == 'SUPPLY_CHARGE'}selected{/if}>Daily supply</option>
+      <option value="OFFPEAK_RATE" {#if page.query.sort.name == 'OFFPEAK_RATE'}selected{/if}>Overnight / off-peak rate</option>
+      <option value="MIDDAY_RATE" {#if page.query.sort.name == 'MIDDAY_RATE'}selected{/if}>Middle of day rate</option>
+      <option value="SHOULDER_RATE" {#if page.query.sort.name == 'SHOULDER_RATE'}selected{/if}>Shoulder rate</option>
+      <option value="PEAK_RATE" {#if page.query.sort.name == 'PEAK_RATE'}selected{/if}>Evening peak rate</option>
+      <option value="FLAT_RATE" {#if page.query.sort.name == 'FLAT_RATE'}selected{/if}>Flat rate</option>
+      <option value="FEED_IN_RATE" {#if page.query.sort.name == 'FEED_IN_RATE'}selected{/if}>Solar feed-in</option>
+      <option value="NAME" {#if page.query.sort.name == 'NAME'}selected{/if}>Name</option>
+    </select>
+  </label>
+
+  <label>Show
+    <select name="limit">
+      <option value="25" {#if page.query.limit == 25}selected{/if}>25</option>
+      <option value="100" {#if page.query.limit == 100}selected{/if}>100</option>
+      <option value="all" {#if page.query.showsAll()}selected{/if}>All</option>
+    </select>
+  </label>
+
+  <button type="submit" class="primary">Apply</button>
+  <span class="spacer"></span>
+  <a class="button" href="/rates.csv?{page.query.queryString()}&amp;{shell.windowQuery()}">Download CSV</a>
+</form>
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">What each plan charges</p>
+  <p class="explain">
+    The published rates, in cents, as they appear on a fact sheet &mdash; not what this household
+    would pay. A dash means the plan has no such charge, which is itself worth seeing: a flat
+    tariff has no evening peak to compare. An asterisk means the rate holds only up to a daily or
+    monthly allowance; hover it for the rate beyond.
+    Sorting by a rate puts plans that charge nothing comparable last, because a tariff with no
+    evening peak has not got the cheapest one.
+  </p>
+
+  {#if page.empty()}
+  <p class="explain">No plans match. <a href="{shell.link('/rates')}">Clear the criteria</a>.</p>
+  {#else}
+  <p class="counts">
+    Showing {page.results.size} of {page.matched} matching, from {page.total} costed.
+    {#if page.hiddenByRequirements != 0}
+    <span class="conditional-note">{page.hiddenByRequirements} hidden because they need equipment
+    or a membership.</span>
+    {/if}
+  </p>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th><th>Retailer</th>
+          {#for column in page.rateColumns}<th class="right rate-col">{column.label()}</th>{/for}
+          <th class="right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+      {#for row in page.results}
+        <tr>
+          <td><a class="plan-name" href="{shell.link('/plans/' + row.bill().plan().id())}">{row.planName()}</a></td>
+          <td class="plan-sub">{row.retailer()}</td>
+          {#let rates=page.ratesFor(row)}
+          {#for column in page.rateColumns}
+          <td class="right num rate-col">
+            {#if rates.has(column)}{money:cents(rates.rate(column))}{#if rates.capped(column)}<abbr class="conditional-total" title="Only up to a daily or monthly allowance; beyond it the rate is {money:cents(rates.beyond(column))}.">*</abbr>{/if}{#else}<span class="absent">&mdash;</span>{/if}
+          </td>
+          {/for}
+          {/let}
+          <td class="right num" style="font-weight:600">{money:dollars(row.total())}</td>
+        </tr>
+      {/for}
+      </tbody>
+    </table>
+  </div>
+  {/if}
+</section>
+
+{/body}
