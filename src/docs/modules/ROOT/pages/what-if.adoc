@@ -26,6 +26,14 @@ prices midnight to six at 4.99c is not a uniform increase — it lands almost en
 cheapest window, which makes that window's rate worth far more than it is today. A plan that loses
 on your current consumption can win comfortably once there is a car in the household.
 
+=== Which plans it schedules against
+
+Scheduling and costing run against your shortlist, not the couple of hundred tariffs a harvest
+returns: your own plan files, plus anything you have picked out of the market from
+xref:browsing-plans.adoc#shortlist[the plan browser]. Scheduling an appliance against three hundred
+tariffs would answer a question nobody asked, and bury the handful you actually care about behind
+it. A picked plan sits on exactly the same footing here as one you wrote yourself.
+
 === Presets, in units you already know
 
 Nobody knows their pool pump's draw, so every appliance arrives with real defaults and every field

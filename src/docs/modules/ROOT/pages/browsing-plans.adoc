@@ -14,7 +14,8 @@ amongst offers that need solar, a battery and an electric vehicle.
 
 So the dashboard shows four kinds of plan and nothing else:
 
-* your own tariff, and any other plan you have defined as a file
+* your own tariff, any other plan you have defined as a file, and any plan you have picked out of
+  the market — see <<shortlist,Keeping plans on a shortlist>>
 * the cheapest plan anyone can sign up to
 * the cheapest plan that exists at all, with its requirement named beside it
 * the regulated benchmark
@@ -69,7 +70,7 @@ described by the most distinguishing one, so a time-of-use plan that also has a 
 listed as a demand plan.
 
 Sort by::
-What it would cost, the peak rate, the daily supply charge, the effective rate, or the name.
+What it would cost, its peak rate, its daily supply charge, its effective rate, or its name.
 
 Show::
 How many rows to render. The default is bounded deliberately; *All* is a deliberate act.
@@ -107,6 +108,15 @@ into the total beside it; see <<fees,Fees and incentives>>.
 *Partly priced*::
 Some of your energy fell outside every charge this plan defines. Its total is a floor, not a
 figure: the true cost is higher, by an amount nothing on the page can currently state.
+
+*No longer published*::
+The register has stopped listing this plan. The rates shown are the last the retailer published,
+recovered from the harvest cache — see <<shortlist,Keeping plans on a shortlist>> for why a picked
+plan can outlive its own listing.
+
+*Shortlisted*::
+You have picked this plan. It is read by the dashboard and by the appliance modelling on
+xref:what-if.adoc[the what-if screen], as well as by this table.
 
 [#requirements]
 == Telling the page what you own
@@ -161,6 +171,11 @@ What the plan would have cost over the window you have selected, with the arithm
 Eligibility::
 Anything you must own or join, quoted in full rather than hidden behind a hover.
 
+Provenance::
+A plan read from the register carries its Consumer Data Right plan identifier, and, when the
+register has been read this session, the date and time it was. A comparison is only as fresh as
+its harvest, and a tariff published three weeks ago may not be on sale today.
+
 [#fees]
 == Fees and incentives are shown but not costed
 
@@ -181,6 +196,57 @@ like this carries a *Fees not costed* marker beside its row in the table, before
 Ticking two to four plans and pressing *Compare selected* opens
 xref:comparing-plans.adoc[the comparison screen], which attributes the difference between them to
 named charge components and says whether the ranking would survive a change in your consumption.
+
+[#shortlist]
+== Keeping plans on a shortlist
+
+Ticking a plan and pressing *Add to shortlist*, rather than *Compare selected*, does something
+different: it keeps the plan. Comparing costs two to four plans once, for the look you are taking
+right now. Shortlisting keeps them — the next time you open the dashboard or model an appliance,
+they are simply there, rather than needing a hundred rows re-ticked to get back to the four you
+actually cared about. Picking and comparing read the same checkboxes but act on them separately;
+ticking a row for one does not tick it for the other.
+
+A plan you have picked carries a *Shortlisted* chip wherever it appears next: on its own row here,
+on its detail page, on the dashboard, and in the appliance modelling on xref:what-if.adoc[the
+what-if screen].
+
+=== Where a pick is kept
+
+Your picks live in `.shortlist`, a dotfile written beside your plan YAML in the plans directory —
+see `electrome.shortlist.name` in xref:configuration.adoc[Configuration]. Take a plan off the
+shortlist from the row it appears on, with the *Remove* button beside its chip, or edit the file
+itself: one identifier per line, under a comment header saying electroMe wrote it, so deleting a
+line by hand does exactly the same thing. The plans directory is the natural place for it: it is
+the household's own, it always exists, and it resolves correctly from every working directory the
+application runs in. The name starts with a dot and does not end in `.yaml`, so the plan loader
+passes straight over it — it is never mistaken for a tariff.
+
+Only the identifier is written, never the rates. Writing the rates would be writing a plan file,
+and a plan file is something the household edits deliberately; a tick in a table is not that. The
+tariff behind a picked identifier is read fresh from the harvest, or, failing that, from the
+harvest cache.
+
+A selection kept only for the life of one run would have to be rebuilt from a few hundred rows
+every time the application restarted, so it is written to disk rather than held in memory. If the
+file cannot be read, or is not there at all, the shortlist is simply empty — never a reason the
+application fails to start.
+
+=== One working set
+
+The shortlist is the household's plan files plus its picks, together, and it is the one list read
+by the dashboard's comparison panel and by the appliance modelling on the what-if screen. A picked
+tariff and a hand-written one are not distinguished there — deliberately, because the appliance
+modelling has no business caring where a tariff came from, only what it would cost.
+
+=== When a picked plan is withdrawn
+
+Re-harvesting the market replaces the plan behind every identifier the register still publishes.
+An identifier that has disappeared from the register does not disappear from the shortlist along
+with it — a plan being withdrawn may be exactly why you are looking. It stays, marked *No longer
+published*, priced from the last detail the retailer published, which is still sitting in the
+harvest cache. If nothing can resolve an identifier at all — not the register, not the cache — it
+is reported as unresolved rather than quietly dropped.
 
 == Plans defined as files
 

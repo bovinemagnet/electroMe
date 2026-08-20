@@ -120,6 +120,12 @@
               {#for chip in notes.chips()}<span class="chip" title="{notes.eligibilityText()}">{chip.label()}</span>{/for}
               {#if notes.uncostedFees}<span class="chip fees" title="This plan publishes fees that the total beside it does not include.">Fees not costed</span>{/if}
               {#if !notes.fullyPriced}<span class="chip warn" title="Some of your energy fell outside every charge this plan defines, so its total is a floor rather than a figure.">Partly priced</span>{/if}
+              {#if notes.withdrawn}<span class="chip warn" title="The register no longer publishes this plan. The rates shown are the last the retailer did publish, from the harvest cache.">No longer published</span>{/if}
+              {#if notes.shortlisted}<span class="chip picked" title="On your shortlist: compared on the dashboard and used by the appliance modelling.">Shortlisted</span><button type="button" class="chip drop"
+                      title="Take this plan off your shortlist."
+                      hx-post="/fragments/browser/shortlist/remove"
+                      hx-vals='{"plan": "{row.bill().plan().id()}", "from": "{shell.window.from}", "to": "{shell.window.to}"}'
+                      hx-target="#results" hx-swap="innerHTML">Remove</button>{/if}
             </div>
             {/if}
             {/let}
@@ -139,6 +145,11 @@
 
   <p class="compare-action">
     <button type="submit" class="primary">Compare selected</button>
+    <button type="submit" class="secondary"
+            formmethod="post" formaction="/fragments/browser/shortlist"
+            hx-post="/fragments/browser/shortlist" hx-target="#results" hx-swap="innerHTML">
+      Add to shortlist
+    </button>
     <span class="explain" style="display:inline; margin-left:10px">
       Tick two to four plans to see, component by component, what separates them.
     </span>

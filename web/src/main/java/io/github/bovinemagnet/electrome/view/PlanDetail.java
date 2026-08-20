@@ -34,6 +34,10 @@ import java.util.List;
  *
  * @param local true when this plan came from a file rather than the harvest; a local file wins
  *     on identifier collision and so behaves differently
+ * @param harvestedAt when the register was last read, for a plan that came from it; null for a
+ *     plan defined as a file, whose freshness is the household's own business
+ * @param shortlisted true when the household has picked this plan out of the market
+ * @param withdrawn true when the register no longer publishes it
  */
 public record PlanDetail(
         BillBreakdown bill,
@@ -44,7 +48,10 @@ public record PlanDetail(
         List<String> conditions,
         List<PlanFee> fees,
         List<PlanIncentive> incentives,
-        boolean local) {
+        boolean local,
+        java.time.LocalDateTime harvestedAt,
+        boolean shortlisted,
+        boolean withdrawn) {
 
     /**
      * One 24-hour axis.
@@ -76,6 +83,13 @@ public record PlanDetail(
 
     public static PlanDetail of(BillBreakdown bill, DateRange range, List<String> conditions,
             PlanExtras extras, boolean local) {
+        return of(bill, range, conditions, extras, local, null, false, false);
+    }
+
+    /** The same, with where the plan came from and whether the household is watching it. */
+    public static PlanDetail of(BillBreakdown bill, DateRange range, List<String> conditions,
+            PlanExtras extras, boolean local, java.time.LocalDateTime harvestedAt,
+            boolean shortlisted, boolean withdrawn) {
         var plan = bill.plan();
         var resolved = extras == null ? PlanExtras.none() : extras;
         return new PlanDetail(
@@ -87,7 +101,33 @@ public record PlanDetail(
                 conditions,
                 resolved.fees(),
                 resolved.incentives(),
-                local);
+                local,
+                harvestedAt,
+                shortlisted,
+                withdrawn);
+    }
+
+    /**
+     * True when this plan came from the register rather than from a file.
+     *
+     * <p>Independent of whether a harvest has run in this session: a plan recovered from the
+     * harvest cache is still the register's, and still needs to say so.
+     */
+    public boolean harvested() {
+        return !local;
+    }
+
+    /** Whether we can say when the register was last read, as opposed to only that it was. */
+    public boolean harvestDateKnown() {
+        return harvestedAt != null;
+    }
+
+    /** The harvest date, as a reader reads a date. */
+    public String harvestedOn() {
+        return harvestedAt == null
+                ? ""
+                : harvestedAt.format(java.time.format.DateTimeFormatter.ofPattern(
+                        "d MMMM yyyy 'at' HH:mm", java.util.Locale.ENGLISH));
     }
 
     public Plan plan() {

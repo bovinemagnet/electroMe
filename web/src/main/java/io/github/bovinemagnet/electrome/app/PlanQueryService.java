@@ -32,13 +32,16 @@ import java.util.function.Predicate;
 public class PlanQueryService {
 
     @Inject MarketPlanSource market;
+    @Inject ShortlistService shortlist;
 
     /** Uses the harvested eligibility conditions, fees, and the last harvest's own gaps. */
     public PlanPage apply(Comparison comparison, PlanQuery query) {
         return apply(comparison, query, market.conditions(),
                 market.lastReport().map(r -> r.skipReasons()).orElse(List.of()),
                 market.lastReport().map(r -> r.skipped().size()).orElse(0),
-                market.extras().keySet());
+                market.extras().keySet(),
+                shortlist.pickedIds(),
+                shortlist.withdrawnIds());
     }
 
     /**
@@ -70,6 +73,16 @@ public class PlanQueryService {
             Comparison comparison, PlanQuery query, Map<String, List<String>> conditions,
             List<String> unpriceableReasons, int unpriceable,
             java.util.Set<String> planIdsWithUncostedFees) {
+        return apply(comparison, query, conditions, unpriceableReasons, unpriceable,
+                planIdsWithUncostedFees, java.util.Set.of(), java.util.Set.of());
+    }
+
+    public PlanPage apply(
+            Comparison comparison, PlanQuery query, Map<String, List<String>> conditions,
+            List<String> unpriceableReasons, int unpriceable,
+            java.util.Set<String> planIdsWithUncostedFees,
+            java.util.Set<String> shortlistedIds,
+            java.util.Set<String> withdrawnIds) {
 
         var everything = comparison.results();
 
@@ -86,7 +99,9 @@ public class PlanQueryService {
                     requirements,
                     eligibility,
                     planIdsWithUncostedFees.contains(id),
-                    result.bill().complete()));
+                    result.bill().complete(),
+                    shortlistedIds.contains(id),
+                    withdrawnIds.contains(id)));
         }
 
         // Every retailer present, not only those surviving the filter: a control that removes
