@@ -34,6 +34,7 @@ public record Shell(
             new Screen("/", "Dashboard", "dashboard"),
             new Screen("/plans", "Plans", "plans"),
             new Screen("/compare", "Compare", "compare"),
+            new Screen("/seasons", "Seasons", "seasons"),
             new Screen("/what-if", "What if", "what-if"));
 
     public Shell {

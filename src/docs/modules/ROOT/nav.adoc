@@ -5,6 +5,7 @@
 ** xref:reading-the-dashboard.adoc[Reading the dashboard]
 ** xref:browsing-plans.adoc[Browsing plans]
 ** xref:comparing-plans.adoc[Comparing plans]
+** xref:seasonal-split.adoc[Seasonal split]
 ** xref:what-if.adoc[What-if modelling]
 ** xref:market-plans.adoc[Market plans]
 

@@ -133,6 +133,21 @@ Two consequences worth knowing:
   demand plan can lift your monthly peak sharply, and the cost then depends heavily on when it
   runs. The plan is marked as an estimate for that reason.
 
+=== More than one appliance at once
+
+The form on the screen asks about one appliance, but the modelling underneath it is not limited
+to that: it can schedule and cost several appliances together. A household with two electric
+vehicles does not have one vehicle twice — they want different amounts of energy, are plugged in
+at different times, and are charged on different nights. Each is scheduled on its own terms
+against each plan's own rates, and what they cost together is then a single full costing of the
+series with all of them present, which is why the combined figure is exact even though each
+appliance's schedule was chosen independently of the others.
+
+That independence is the one approximation left, and it only bites where one appliance changes
+what the next one pays — a capped window, a block rate, a demand charge. Those are exactly the
+plans <<scheduling-method,already marked as inexact>> for the single-appliance case, and the same
+note applies for the same reason once a second appliance is added.
+
 == How a scenario is scored
 
 Each scenario transforms your consumption, then re-costs the result *against every plan you have

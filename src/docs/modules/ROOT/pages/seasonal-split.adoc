@@ -1,0 +1,83 @@
+= Seasonal split
+:description: Whether being on the best plan for each season beats being on the best plan for the year.
+
+A ranking of annual totals answers "which plan wins over the year". It cannot see a household
+whose consumption changes shape with the season, because a year of totals has already thrown that
+shape away.
+
+A pool running November to March moves several thousand kilowatt hours into the middle of the
+day. A plan that wins on that shape can lose on the winter one, and no amount of staring at an
+annual ranking will tell you so — the two effects average out into a single number that favours
+whichever plan happens to be a bit cheaper overall. This screen prices every plan over each half
+of the year separately, and asks the sharper question: would being on the best plan in each season
+beat being on the best plan for the year?
+
+== Getting there
+
+Open `/seasons`, between *Compare* and *What if* in the navigation. The window is the usual
+`from`/`to`, and the split itself is `seasonFrom` and `seasonTo`:
+
+----
+/seasons?from=2025-07-01&to=2026-06-30&seasonFrom=Nov&seasonTo=Mar
+----
+
+`seasonFrom` and `seasonTo` are the first and last month of the first season, inclusive, and the
+season is allowed to wrap through December — November to March runs Nov, Dec, Jan, Feb, Mar. A
+month can be given as a name, an abbreviation, or a number from 1 to 12, in any case. Left off, or
+given a value that means nothing, the split falls back to the default of November to March: a
+mistyped URL should show the default report, not an error page. A split covering all twelve
+months is rejected, because it would leave no second season to compare against.
+
+== Why the cut falls on a month
+
+The year is cut on month boundaries, not on arbitrary dates, because a tariff's own accumulation
+periods are monthly at their shortest. A block rate's allowance, a demand charge's peak window,
+a discount's billing cycle — all of them reset on the month. Cut mid-month instead, and you divide
+one of those periods across both seasons, and each half gets to start fresh. Both seasons would
+then look cheaper than the year they came from, for a reason that has nothing to do with which
+plan actually suits the season.
+
+== The answer
+
+The headline has three possible shapes.
+
+*Switching is worth it.* A figure, in pounds, for what two changeovers a year would have saved
+over this window, together with which plan wins each season.
+
+*One plan wins both seasons.* The common case, and a more useful finding than any number: it
+means the annual ranking was not hiding a seasonal one, and there is nothing to act on.
+
+*Switching would not pay.* The best plan for each season, taken together, does not beat staying
+on the best plan for the whole window.
+
+The saving is stated before what it costs to act on it. Two changeovers a year means two sets of
+paperwork, two final bills, and any sign-up benefit you can only claim once — weigh the figure
+against that, rather than treating it as free money.
+
+== The table
+
+Every plan, cheapest whole-window first, with a column for each season and a column for the
+window as a whole. The two season columns normally add up to the whole-window column, which is
+what makes a seasonal figure checkable against an annual one — you are not being asked to trust a
+number that cannot be verified against the total you already believe.
+
+Normally, but not always. Some tariffs do not decompose that cleanly: a block rate that resets
+quarterly gets a fresh allowance in each season rather than sharing the year's one allowance, and
+a fixed-amount discount is applied once per costing and so lands in both seasons individually
+rather than once across the year. This is measured, not reasoned about — all three figures are
+computed independently and compared, so any tariff that fails to decompose says so, including one
+nobody anticipated when the screen was built. Such a plan is marked in the table with an asterisk,
+and the reason is set out beneath it. Its whole-window figure is still exact; it is only the two
+season figures beside it that cannot be added together to check it.
+
+The comparison behind that asterisk is made on unrounded totals, not on the cents shown in the
+table. Rounding three figures to cents independently can leave the seasons a cent away from the
+year with nothing actually wrong — real accumulation effects run to pounds, not cents, so a
+one-cent gap is display rounding rather than a tariff that fails to decompose.
+
+== See also
+
+* xref:comparing-plans.adoc[Comparing plans] — the same kind of attributed difference, for two
+  to four plans over one window rather than every plan over two.
+* xref:defining-a-plan.adoc[Defining a plan] — the charge types most likely to produce a plan
+  that does not decompose across a season boundary.

@@ -78,7 +78,16 @@ public final class PlanYamlLoader {
         }
 
         String id = text(root, "id");
-        boolean inclusive = root.path("gstInclusive").asBoolean(true);
+        // Required, not defaulted. Fact sheets are published both ways — AGL's excluding GST,
+        // OVO's and GloBird's including it — and getting this wrong misprices a plan by 10%
+        // while every figure still looks entirely plausible. A default would let a file be
+        // silently wrong; an omission has to be an error.
+        if (!present(root, "gstInclusive")) {
+            throw new IllegalArgumentException("Plan " + id + " must state gstInclusive: "
+                    + "whether the rates below already include GST. There is no safe default — "
+                    + "guessing wrong misprices the plan by 10%.");
+        }
+        boolean inclusive = root.get("gstInclusive").asBoolean();
 
         var charges = new ArrayList<Charge>();
         JsonNode chargeNodes = root.get("charges");

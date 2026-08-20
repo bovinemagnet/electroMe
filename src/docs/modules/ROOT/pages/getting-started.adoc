@@ -35,6 +35,16 @@ AccountNumber,NMI,DeviceNumber,DeviceType,RegisterCode,RateTypeDescription,Start
 `ProfileReadValue` is the kilowatt-hours consumed in that half hour. That is the column everything
 else is derived from. The account number and NMI above are placeholders; yours will be real.
 
+Rows are split on bare commas, with no handling for quoted or escaped fields. That is an
+assumption about this export format, not a property of CSV in general, and it is deliberate: this
+file carries no quoting, and a plain split over tens of thousands of rows is both faster and
+easier to give a useful error from than a general CSV parser would be. To catch a file that does
+not hold to that assumption, every row must carry exactly as many fields as the header — a row
+that does not fails with an error naming the line number and both counts, rather than silently
+shifting every column after the mismatch. If your retailer's export quotes a field containing a
+comma, it will fail to load here; that failure is the signal that the format needs a real CSV
+parser, not this one.
+
 [IMPORTANT]
 ====
 This file identifies you. It carries your account number and your NMI, and it reveals when you are

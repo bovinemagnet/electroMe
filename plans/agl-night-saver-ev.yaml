@@ -1,7 +1,15 @@
 # AGL Night Saver EV, AusNet distribution zone.
-# Retailer fact sheet, retrieved 20 August 2026.
-# The fact sheet quotes daily supply excluding GST as 115.412c; 115.412 x 1.1 = 126.95c,
-# which is the figure below. Usage rates are recorded as published.
+# Retailer fact sheet, retrieved 20 August 2026. Rates below are GST inclusive.
+#
+# The daily supply charge was converted: the fact sheet quotes 115.412c excluding GST, and
+# 115.412 x 1.1 = 126.95c, which is the figure below.
+#
+# TODO: the two usage rates were supplied already converted, and have NOT been checked against
+# the fact sheet. AGL publishes its fact sheets excluding GST, so if 8.797 and 31.654 are the
+# ex-GST figures rather than converted ones, they should read 9.677 and 34.819. That is not a
+# rounding question. On this household's year it is the difference between $2,812 and $3,047,
+# and it moves this plan from second cheapest of the shortlist to sixth. Check the fact sheet
+# before acting on any figure from this file.
 id: agl-night-saver-ev
 name: Night Saver EV
 retailer: AGL

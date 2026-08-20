@@ -54,7 +54,7 @@ class ShellTest {
     void offersEveryScreenThatExists() {
         // A link to a screen that has not been built yet is worse than no link at all.
         assertThat(Shell.SCREENS).extracting(Shell.Screen::path)
-                .containsExactly("/", "/plans", "/compare", "/what-if");
+                .containsExactly("/", "/plans", "/compare", "/seasons", "/what-if");
     }
 
     @Test
