@@ -1,0 +1,78 @@
+= Plan rates
+:description: What each plan charges, as published, independent of what you would pay for it.
+
+xref:browsing-plans.adoc[The plan browser] answers "what would this cost me". This screen answers
+a different question: "what does it charge". A tariff's rates are a fact about the tariff; a total
+is a fact about the consumption it was priced against. If you are deciding whether to move a pool
+pump into the middle of the day, it is the first question you are actually asking.
+
+Open it from the navigation.
+
+== A shared vocabulary
+
+Rates are grouped into the same closed set of components xref:comparing-plans.adoc[the comparison
+matrix] already uses, rather than each retailer's own labels for its windows: Daily supply,
+Overnight / off-peak, Middle of day, Shoulder, Evening peak, Flat usage rate, Block rates, Demand
+charge, Controlled load, Solar feed-in, Discount.
+
+The vocabulary has to be closed, because retailers do not agree on their own. Two plans whose
+evening peaks run 16:00 to 21:00 and 17:00 to 21:00 must land in the same column, or the
+comparison you came to make is impossible — you would be reading two tables that happen to sit
+side by side rather than one table you can compare down a column.
+
+The classification is relative to the plan, not absolute. There is no rate that is intrinsically a
+peak rate — a band is the peak because it is the dearest one that tariff charges, and the middle of
+the day is where a solar-soak rate sits whatever it actually costs.
+
+== Published rates, not effective ones
+
+Every figure is read from the tariff itself, never from a costed bill, and the difference matters.
+Dividing a capped window's cost by the energy it covers gives a blended rate the retailer never
+printed — one that moves with your consumption rather than with the tariff, and that you cannot
+check against anything on the fact sheet.
+
+So a capped window shows the rate it advertises: the number on the fact sheet, and the reason the
+window exists in the first place. It carries an asterisk; hover it for the rate that applies once
+the allowance is spent.
+
+== Dashes are information
+
+A dash means the plan has no such charge, and that absence is worth seeing rather than hiding. A
+flat tariff has no evening peak to compare, and hiding the column, or filling it with a zero, would
+say something false about the plan.
+
+== Sorting by a rate
+
+Alongside the existing orders — cost and name — you can sort by daily supply, overnight/off-peak,
+middle of day, shoulder, evening peak, flat, or solar feed-in.
+
+A plan that charges nothing comparable sorts last, because a tariff with no evening peak has not
+got the cheapest evening peak. A flat tariff is the one exception: it is not treated as having no
+peak, because its single rate is what it charges in the evening as much as at midnight, so it falls
+back to that rate rather than sorting last.
+
+== Downloading the table
+
+The *Download CSV* link calls `GET /rates.csv` with the same criteria as the screen — search,
+eligibility, shape and sort — and returns `text/csv` with a `Content-Disposition` attachment
+filename carrying the date window, for example
+`electrome-rates-2025-07-01-to-2026-06-30.csv`.
+
+Columns are `plan_id`, `plan_name`, `retailer`, `shape`, `total_dollars`,
+`average_cents_per_kwh`, then two columns per component: the rate, and the rate beyond any cap.
+An absent rate is an *empty* cell, never a zero — writing zero would say the plan charges nothing
+for the evening, which is the opposite of the truth.
+
+The export ignores the page limit. A file has no reason to be paginated, and a reader who asked
+for the data did not ask for the first twenty-five rows of it.
+
+This is the only endpoint in the application that emits anything but HTML, and that is a
+deliberate exception rather than an oversight. A screen can be read but not pivoted, and a
+household checking three hundred tariffs against its own arithmetic needs the numbers, not a
+picture of them. On this project's own numbers, a full AusNet harvest exports 351 rows at 48 KB.
+
+== See also
+
+* xref:browsing-plans.adoc[Browsing plans] — the same plans, ranked by what they would have cost.
+* xref:comparing-plans.adoc[Comparing plans] — the same vocabulary, applied to two to four plans
+  side by side.

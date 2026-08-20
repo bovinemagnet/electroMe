@@ -332,4 +332,51 @@ class PlanMatrixTest {
                     org.assertj.core.data.Offset.offset(new BigDecimal("0.01")));
         }
     }
+
+    /**
+     * A capped window is still the window it is.
+     *
+     * <p>Components were matched by rebuilding a bill line's label and comparing strings. Once
+     * a capped band started producing "Usage 11:00-15:00 to 50 kWh" instead of
+     * "Usage 11:00-15:00" nothing matched, and every band on a capped plan quietly fell
+     * through to shoulder — so GloBird's free window and its evening peak landed on the same
+     * row, which is the one comparison this screen exists to make.
+     */
+    @Test
+    void classifiesACappedWindowByItsBandRatherThanItsLabel() {
+        var capped = plan("capped", "120.00", new TimeOfUse(List.of(
+                Band.parseTiered("11:00", "15:00", DaySelector.ALL, ResetPeriod.DAILY, List.of(
+                        new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                        new Tier(null, new BigDecimal("9.9")))),
+                Band.parseTiered("15:00", "11:00", DaySelector.ALL, ResetPeriod.DAILY, List.of(
+                        new Tier(new BigDecimal("15"), new BigDecimal("33.22")),
+                        new Tier(null, new BigDecimal("35.75")))))));
+
+        var engine = new CostingEngine();
+        var matrix = PlanMatrix.of(List.of(engine.cost(usage(), capped, RANGE)), RANGE);
+
+        assertThat(matrix.rows()).extracting(PlanMatrix.Row::component)
+                .contains(Component.MIDDAY, Component.PEAK)
+                .doesNotContain(Component.SHOULDER);
+    }
+
+    /** Both blocks of one capped band belong to that band's component, not to two rows. */
+    @Test
+    void gathersEveryBlockOfACappedBandOntoOneRow() {
+        var capped = plan("capped", "120.00", new TimeOfUse(List.of(
+                Band.parseTiered("11:00", "15:00", DaySelector.ALL, ResetPeriod.DAILY, List.of(
+                        new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                        new Tier(null, new BigDecimal("9.9")))),
+                Band.parse("15:00", "11:00", DaySelector.ALL, new BigDecimal("33.22")))));
+
+        var engine = new CostingEngine();
+        var bill = engine.cost(usage(), capped, RANGE);
+        var matrix = PlanMatrix.of(List.of(bill), RANGE);
+
+        var midday = matrix.rows().stream()
+                .filter(row -> row.component() == Component.MIDDAY)
+                .findFirst().orElseThrow();
+        // 31 days x 8 half hours x 0.4 kWh, both blocks together.
+        assertThat(midday.cells().get(0).quantity()).isEqualByComparingTo("99.2");
+    }
 }

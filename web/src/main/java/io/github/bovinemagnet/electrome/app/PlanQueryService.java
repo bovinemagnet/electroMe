@@ -64,11 +64,6 @@ public class PlanQueryService {
                 java.util.Set.of());
     }
 
-    /**
-     * @param unpriceableReasons why the harvester could not price some plans, counted
-     * @param unpriceable how many plans those reasons account for, which is the size of the
-     *     blind spot behind any verdict drawn from what remains
-     */
     public PlanPage apply(
             Comparison comparison, PlanQuery query, Map<String, List<String>> conditions,
             List<String> unpriceableReasons, int unpriceable,
@@ -77,6 +72,11 @@ public class PlanQueryService {
                 planIdsWithUncostedFees, java.util.Set.of(), java.util.Set.of());
     }
 
+    /**
+     * @param unpriceableReasons why the harvester could not price some plans, counted
+     * @param unpriceable how many plans those reasons account for, which is the size of the
+     *     blind spot behind any verdict drawn from what remains
+     */
     public PlanPage apply(
             Comparison comparison, PlanQuery query, Map<String, List<String>> conditions,
             List<String> unpriceableReasons, int unpriceable,
@@ -89,9 +89,11 @@ public class PlanQueryService {
         // What each plan asks of a household, read once and carried, so a row and the verdict
         // can never disagree about whether a plan is available to this reader.
         var notes = new java.util.LinkedHashMap<String, PlanNotes>();
+        var rates = new java.util.LinkedHashMap<String, PlanRates>();
         var required = new java.util.LinkedHashMap<String, java.util.Set<Requirement>>();
         for (var result : everything) {
             String id = result.bill().plan().id();
+            rates.put(id, PlanRates.of(result.bill().plan()));
             var eligibility = conditions.getOrDefault(id, List.of());
             var requirements = Requirement.of(eligibility);
             required.put(id, requirements);
@@ -129,7 +131,7 @@ public class PlanQueryService {
                 .filter(savesAtLeast(query))
                 .toList());
 
-        matched.sort(order(query));
+        matched.sort(order(query, rates));
 
         int hiddenByRequirements = switch (query.requirements()) {
             case OPEN_ONLY -> withRequirements;
@@ -144,7 +146,9 @@ public class PlanQueryService {
         return new PlanPage(query, shown, matched.size(), everything.size(),
                 hiddenByRequirements, withRequirements, List.copyOf(retailers),
                 verdict(everything, query, required, unpriceableReasons, unpriceable),
-                notes);
+                notes,
+                rates,
+                PlanRates.columnsFor(List.copyOf(rates.values())));
     }
 
     /**
@@ -254,57 +258,39 @@ public class PlanQueryService {
         return planConditions != null && !planConditions.isEmpty();
     }
 
-    private static Comparator<PlanResult> order(PlanQuery query) {
+    private static Comparator<PlanResult> order(
+            PlanQuery query, Map<String, PlanRates> rates) {
+        var component = query.sort().component();
+        if (component != null) {
+            // Ties broken by total, so an order over a rate every plan shares still reads as a
+            // ranking rather than as whatever order the plans happened to arrive in.
+            return Comparator
+                    .<PlanResult, BigDecimal>comparing(result -> rateOf(result, rates, component))
+                    .thenComparing(PlanResult::total);
+        }
         return switch (query.sort()) {
             case TOTAL -> Comparator.comparing(PlanResult::total);
             case NAME -> Comparator.comparing(PlanResult::planName, String.CASE_INSENSITIVE_ORDER);
             case AVERAGE_RATE -> Comparator.comparing(r -> r.bill().averageCentsPerKWh());
-            case SUPPLY_CHARGE -> Comparator.comparing(
-                    (PlanResult r) -> supplyCents(r.bill().plan()))
-                    .thenComparing(PlanResult::total);
-            case PEAK_RATE -> Comparator.comparing(
-                    (PlanResult r) -> peakCents(r.bill().plan()))
-                    .thenComparing(PlanResult::total);
+            default -> Comparator.comparing(PlanResult::total);
         };
     }
 
-    /** A plan with no stated supply charge sorts last rather than first. */
-    private static BigDecimal supplyCents(Plan plan) {
-        for (var charge : plan.charges()) {
-            if (charge instanceof DailySupply supply) {
-                return supply.centsPerDay();
-            }
-        }
-        return MAX;
-    }
-
     /**
-     * The dearest usage rate the plan can charge.
+     * One plan's published rate for a component.
      *
-     * <p>A flat plan has one rate, and that rate is its peak. Treating it as having no peak
-     * would float every flat plan to the top of a peak-rate sort, which is the opposite of
-     * what the reader asked to see.
+     * <p>A plan that does not charge the component at all sorts last. A tariff with no evening
+     * peak has not got the cheapest evening peak, and floating it to the top of that order
+     * would answer a different question from the one asked.
      */
-    private static BigDecimal peakCents(Plan plan) {
-        BigDecimal dearest = null;
-        for (var charge : plan.charges()) {
-            dearest = switch (charge) {
-                case FlatRate flat -> max(dearest, flat.centsPerKWh());
-                case TimeOfUse tou -> max(dearest, tou.bands().stream()
-                        .map(Band::centsPerKWh).max(BigDecimal::compareTo).orElse(null));
-                case Tiered tiered -> max(dearest, tiered.tiers().stream()
-                        .map(Tier::centsPerKWh).max(BigDecimal::compareTo).orElse(null));
-                default -> dearest;
-            };
+    private static BigDecimal rateOf(
+            PlanResult result, Map<String, PlanRates> rates, PlanMatrix.Component component) {
+        var planRates = rates.get(result.bill().plan().id());
+        if (planRates == null) {
+            return MAX;
         }
-        return dearest == null ? MAX : dearest;
-    }
-
-    private static BigDecimal max(BigDecimal current, BigDecimal candidate) {
-        if (candidate == null) {
-            return current;
-        }
-        return current == null || candidate.compareTo(current) > 0 ? candidate : current;
+        var rate = planRates.usageRate(component);
+        return rate == null ? MAX : rate;
     }
 
     /** Sorts anything that cannot state the figure to the end of the list. */

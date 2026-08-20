@@ -70,7 +70,10 @@ described by the most distinguishing one, so a time-of-use plan that also has a 
 listed as a demand plan.
 
 Sort by::
-What it would cost, its peak rate, its daily supply charge, its effective rate, or its name.
+What it would cost, the daily supply charge, a rate for any part of the day —
+overnight/off-peak, middle of day, shoulder, evening peak, flat or solar feed-in —
+the effective rate, or the name. See <<rate-columns,The rate columns>> for what a rate order does
+with a plan that does not charge one.
 
 Show::
 How many rows to render. The default is bounded deliberately; *All* is a deliberate act.
@@ -87,6 +90,16 @@ and dropping every such row for a reason you cannot see would be worse than show
 
 Every criterion appears in the URL, so a filtered view can be bookmarked or sent to somebody
 else.
+
+[#rate-columns]
+== The rate columns
+
+Beside the total, the table carries one column per charge component the plans in view actually
+use — daily supply, overnight/off-peak, middle of day, shoulder, evening peak, and so on — read
+from each tariff as published, not from what you paid. A dash means the plan has no such charge;
+an asterisk means the rate holds only up to a daily or monthly allowance, and hovering it shows the
+rate beyond that allowance. xref:plan-rates.adoc[Plan rates] is a screen built entirely around
+these columns, with the reasoning behind them and a CSV export.
 
 == Reading a row
 

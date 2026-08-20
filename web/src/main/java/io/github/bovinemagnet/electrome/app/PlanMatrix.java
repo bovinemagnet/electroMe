@@ -218,50 +218,13 @@ public record PlanMatrix(List<Plan> plans, List<Row> rows, List<BillBreakdown> b
      * unrelated things on one row and invite a reader to compare them.
      */
     private static Component usageComponent(Plan plan, ChargeLine line) {
-        var bands = timeOfUseBands(plan);
+        var bands = BandComponent.bandsOf(plan);
         if (bands.isEmpty()) {
-            return hasBlocks(plan) ? Component.BLOCK : Component.FLAT;
+            return BandComponent.hasBlocks(plan) ? Component.BLOCK : Component.FLAT;
         }
-        var band = bands.stream()
-                .filter(b -> ("Usage " + b.describe()).equals(line.label()))
-                .findFirst();
-        if (band.isEmpty()) {
-            return Component.SHOULDER;
-        }
-        if (daytime(band.get())) {
-            return Component.MIDDAY;
-        }
-
-        BigDecimal dearest = bands.stream().map(Band::centsPerKWh)
-                .max(BigDecimal::compareTo).orElseThrow();
-        BigDecimal cheapest = bands.stream().map(Band::centsPerKWh)
-                .min(BigDecimal::compareTo).orElseThrow();
-        BigDecimal rate = band.get().centsPerKWh();
-        if (rate.compareTo(dearest) == 0) {
-            return Component.PEAK;
-        }
-        if (rate.compareTo(cheapest) == 0) {
-            return Component.OFFPEAK;
-        }
-        return Component.SHOULDER;
+        return BandComponent.bandFor(line.label(), bands)
+                .map(band -> BandComponent.of(band, bands))
+                .orElse(Component.SHOULDER);
     }
 
-    /** Wholly inside the middle of the day, where a solar-soak rate sits. */
-    private static boolean daytime(Band band) {
-        return !band.wrapsMidnight()
-                && band.fromMinuteOfDay() >= 10 * 60
-                && band.toMinuteOfDay() <= 16 * 60;
-    }
-
-    private static List<Band> timeOfUseBands(Plan plan) {
-        return plan.charges().stream()
-                .filter(TimeOfUse.class::isInstance)
-                .map(charge -> ((TimeOfUse) charge).bands())
-                .findFirst()
-                .orElse(List.of());
-    }
-
-    private static boolean hasBlocks(Plan plan) {
-        return plan.charges().stream().anyMatch(Tiered.class::isInstance);
-    }
 }

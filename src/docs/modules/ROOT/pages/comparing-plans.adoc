@@ -95,6 +95,11 @@ middle of day, shoulder, evening peak — rather than each plan's own band label
 evening windows start an hour apart still belong on one row, which is exactly the comparison you
 came to make.
 
+A capped band's bill line names its window and, on the block beyond the cap, the allowance too —
+`Usage 11:00-15:00 to 50 kWh` rather than `Usage 11:00-15:00`. Classification reads the band
+itself rather than that label, so every block of a capped window still lands on one row, instead of
+a plan's free block and its evening peak landing on the same row by coincidence of wording.
+
 == The shape chart
 
 Each plan's rate through the day on the left axis, your average draw on the right.

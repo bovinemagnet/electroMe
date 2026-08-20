@@ -19,6 +19,8 @@ import java.util.List;
  * @param verdict the answer the table is evidence for, computed over every plan rather than
  *     the filtered subset: narrowing a search should not change which plan is cheapest
  * @param notes what each row has to say beyond its total, by plan id
+ * @param rates what each plan charges, as published, by plan id
+ * @param rateColumns the components any plan on this page charges, in vocabulary order
  */
 public record PlanPage(
         PlanQuery query,
@@ -29,25 +31,38 @@ public record PlanPage(
         int withRequirements,
         List<String> retailers,
         Verdict verdict,
-        java.util.Map<String, PlanNotes> notes) {
+        java.util.Map<String, PlanNotes> notes,
+        java.util.Map<String, PlanRates> rates,
+        List<PlanMatrix.Component> rateColumns) {
 
     public PlanPage {
         results = List.copyOf(results);
         retailers = List.copyOf(retailers);
         verdict = verdict == null ? Verdict.none() : verdict;
         notes = notes == null ? java.util.Map.of() : java.util.Map.copyOf(notes);
+        rates = rates == null ? java.util.Map.of() : java.util.Map.copyOf(rates);
+        rateColumns = rateColumns == null ? List.of() : List.copyOf(rateColumns);
     }
 
     /** A page from before the ranking had a verdict to offer. */
     public PlanPage(PlanQuery query, List<PlanResult> results, int matched, int total,
             int hiddenByRequirements, int withRequirements, List<String> retailers) {
         this(query, results, matched, total, hiddenByRequirements, withRequirements, retailers,
-                Verdict.none(), java.util.Map.of());
+                Verdict.none(), java.util.Map.of(), java.util.Map.of(), List.of());
     }
 
     /** What this row has to say beyond its total. */
     public PlanNotes notesFor(PlanResult result) {
         return notes.getOrDefault(result.bill().plan().id(), PlanNotes.plain());
+    }
+
+    /** What this plan charges, as published. */
+    public PlanRates ratesFor(PlanResult result) {
+        return rates.get(result.bill().plan().id());
+    }
+
+    public boolean showsRates() {
+        return !rateColumns.isEmpty();
     }
 
     public boolean empty() {
