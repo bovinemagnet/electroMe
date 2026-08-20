@@ -75,6 +75,14 @@ public class PlanBrowsing {
         return PlanQuery.of(search, requirements, retailers, shape, sort, limit);
     }
 
+    /** The same, including what the household says it owns and what it will settle for. */
+    public PlanQuery query(String search, String requirements, List<String> retailers,
+            String shape, String sort, String limit, List<String> have,
+            String unconditional, String minimumSaving) {
+        return PlanQuery.of(search, requirements, retailers, shape, sort, limit,
+                have, unconditional, minimumSaving);
+    }
+
     /** An absent window falls back to the default; a malformed one is still a 400. */
     public DateRange range(String from, String to) {
         if (from == null || from.isBlank() || to == null || to.isBlank()) {

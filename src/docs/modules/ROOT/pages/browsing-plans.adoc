@@ -21,6 +21,36 @@ So the dashboard shows four kinds of plan and nothing else:
 
 Nothing is deleted. The rest moves here.
 
+[#answer]
+== The answer above the table
+
+The table is evidence, not an answer. Above it sits one sentence: the cheapest plan you can
+actually sign up to, what it would have cost you over the window you have selected, and what that
+is worth against the plan you are actually on — the plan named by `electrome.baseline.plan`; see
+xref:configuration.adoc#baseline[why that is configured rather than guessed]. Sometimes the
+sentence is that you are already on it.
+
+Two things about it are deliberate.
+
+It never moves as you filter.::
+The answer is drawn from *every plan costed*, never from the rows your search, retailer or shape
+criteria have narrowed the table down to. Which plan is cheapest is a fact about the market, not
+about what you happened to type into a search box, and an answer that shifted every time you
+adjusted a filter would be worth nothing. Whenever a criterion is in force, the page says so
+explicitly, rather than leaving you to notice the mismatch yourself.
+
+Everything that qualifies the figure travels in the same sentence.::
+A discount that has to be earned, equipment the plan requires, and — when a cheaper plan exists but
+asks for something you have not said you own — an explicit admission that something cheaper was
+passed over. None of that is a footnote below the fold. If it changes what the headline number is
+worth, it belongs in the sentence stating the number, not underneath it.
+
+Some of what a harvest returns cannot be priced at all — a plan the harvester refused rather than
+guess at; see xref:market-plans.adoc[Market plans] for why. Those plans are not simply left out of
+the ranking: the panel names how many there are and why, behind a disclosure you can open, because
+one of them could be cheaper than the plan named above it. A gap you cannot see is not the same as
+no gap at all.
+
 == The criteria
 
 All filtering happens on the server, over plans that have *already been costed*. Criteria change
@@ -44,25 +74,72 @@ What it would cost, the peak rate, the daily supply charge, the effective rate, 
 Show::
 How many rows to render. The default is bounded deliberately; *All* is a deliberate act.
 
+Unconditional::
+Hides every plan whose total depends on earning a discount — a loyalty price, a pay-on-time
+saving, anything the retailer makes conditional. Tick it and the table shows only totals that hold
+regardless of what you do next.
+
+Saving at least::
+Hides plans saving less than the amount you enter, measured against your own tariff. A plan with
+nothing to measure against is kept rather than hidden: there is no saving figure to compare it on,
+and dropping every such row for a reason you cannot see would be worse than showing them.
+
 Every criterion appears in the URL, so a filtered view can be bookmarked or sent to somebody
 else.
 
+== Reading a row
+
+A column of totals invites you to take the smallest number in it. Everything that would make that
+a mistake travels with the row rather than living in a legend underneath the table.
+
+Requirement chips::
+Named after the plan, in the retailer's own wording — hover a chip to read the exact eligibility
+text it was classified from.
+
+An asterisk on the total::
+The figure holds only if you earn a discount the plan makes conditional on something; hover it for
+what earning it requires.
+
+*Fees not costed*::
+This plan publishes fees — a card surcharge, a paper-bill fee, a membership — that are not folded
+into the total beside it; see <<fees,Fees and incentives>>.
+
+*Partly priced*::
+Some of your energy fell outside every charge this plan defines. Its total is a floor, not a
+figure: the true cost is higher, by an amount nothing on the page can currently state.
+
 [#requirements]
-== Why plans with requirements are hidden by default
+== Telling the page what you own
 
 Of the plans a live harvest returns, roughly a fifth need equipment or a membership — solar, a
-battery, an electric vehicle, a subscription — and the cheapest few nearly always do.
+battery, an electric vehicle, a subscription — and the cheapest few nearly always do. Showing them
+by default puts a number at the top of the page that you may have no way to reach. So the default
+requirement filter is *Anyone can sign up*, the count of what that hides is always on screen, and
+one click reveals them. This is an editorial position rather than a technical one, and it is the
+only place this software takes one.
 
-Showing them by default puts a number at the top of the page that you may have no way to reach.
-So the default is *Anyone can sign up*, the count of what that hides is always on screen, and one
-click reveals them.
+Under *I have*, tick solar, a battery, or an electric vehicle if the household owns them. This
+does not add or remove a single row from the table — it changes which plan <<answer,the answer
+above the table>> is allowed to name. Tick nothing, and the answer can only ever be a plan open to
+anyone; tick solar, and it may name a plan that requires it, because now you could actually take
+it up.
 
-This is an editorial position rather than a technical one, and it is the only place this software
-takes one.
+The published eligibility text has no structured way to say what it means — every entry in the
+register is typed `OTHER` — so what a plan requires is classified from the wording itself: solar,
+a battery, an electric vehicle, a membership, a concession card. Wording the classifier cannot
+place becomes a requirement of its own, labelled *Conditions apply*, rather than being dropped.
+That distinction matters: a requirement nobody could read is not the same as no requirement at
+all, and treating it as none would let a plan into the answer on the strength of a condition
+nobody actually checked.
 
 NOTE: Ordinary conditions every plan carries — being in the right distribution zone, having a
 smart meter, being a residential customer — are not treated as requirements. Flagging those would
 mark almost every plan and therefore say nothing.
+
+A plan you are not eligible for is never removed from the table, only from the answer above it. It
+still appears as a row, with its chip, so you can see what you are missing and judge for yourself
+whether it is worth pursuing — the table is the evidence, and evidence should not be hidden just
+because it does not apply to you today.
 
 == Opening a plan
 
@@ -96,7 +173,8 @@ exclusive. Folding them into the engine mixes two tax bases, and getting that su
 worse than stating plainly that they are excluded.
 
 Showing rates while silently omitting a ten-dollar monthly membership fee would mislead precisely
-where you had gone looking for detail. So they are shown, and the exclusion is stated.
+where you had gone looking for detail. So they are shown, and the exclusion is stated — and a plan
+like this carries a *Fees not costed* marker beside its row in the table, before you ever open it.
 
 == Comparing a few of them
 
@@ -115,6 +193,27 @@ tariff you are actually on and may no longer be published.
 The window you select is carried on every link. Move between the dashboard and the browser and you
 are still looking at the same period; reload, and it survives; copy the URL, and it describes
 exactly what you were looking at.
+
+== Why this stays fast at a few hundred plans
+
+Every plan is costed independently of every other, and the costing engine keeps no state between
+runs, so nothing stops them being costed at once rather than one after another. On this project's
+own numbers — a household's real year of half-hourly data (35,036 intervals) against a full
+AusNet harvest of 582 mapped plans — costing them in parallel took around 421 milliseconds,
+against 680 milliseconds doing the same work one plan at a time.
+
+Adjusting a criterion afterwards does not re-cost anything: filtering and sorting run over a
+result that is already costed. Re-running the same costing a second time — reloading the page, say
+— is served from a cache, at around 110 milliseconds: the time to build the page, not to price
+582 tariffs again.
+
+That cache is keyed on the usage series *by identity*, not by the numbers it holds, and that is
+deliberate rather than an oversight. A what-if scenario that only rearranges when energy is used
+can, by value, look identical to the series it was derived from; keying on identity means it is
+never mistaken for that baseline and served the baseline's answer. The cache itself holds only a
+handful of entries and is discarded wholesale once it fills, because a scenario series exists to
+answer one question and is never asked again after that — see xref:what-if.adoc[What-if
+modelling].
 
 == Empty results
 

@@ -118,10 +118,14 @@ class MarketHarvestTest {
     @org.junit.jupiter.api.Test
     void reportsEveryReasonAPlanWasSkippedWithACount() {
         var report = new HarvestReport(1, 10, 8, 5, 5,
+                // Built the way a harvest builds them, from the exceptions the mapper
+                // actually throws: a synthetic list here once hid the fact that nothing
+                // grouped, because the real messages name the plan a second time.
                 java.util.List.of(
-                        "A@VEC: seasonal demand charges",
-                        "B@VEC: seasonal demand charges",
-                        "C@VEC: one capped rate covers 2 separate windows",
+                        skipEntry(new UnmappablePlanException("A@VEC", "seasonal demand charges")),
+                        skipEntry(new UnmappablePlanException("B@VEC", "seasonal demand charges")),
+                        skipEntry(new UnmappablePlanException(
+                                "C@VEC", "one capped rate covers 2 separate windows")),
                         "D@VEC: response is not valid JSON"),
                 java.time.Duration.ofSeconds(3));
 
@@ -132,5 +136,10 @@ class MarketHarvestTest {
         assertThat(report.coverage()).isEqualTo("63%");
         assertThat(report.summary()).anySatisfy(
                 line -> assertThat(line).contains("63% of this network mapped"));
+    }
+
+    /** One skipped entry, formed exactly as {@link MarketHarvest} forms it. */
+    private static String skipEntry(UnmappablePlanException thrown) {
+        return thrown.planId() + ": " + thrown.reason();
     }
 }

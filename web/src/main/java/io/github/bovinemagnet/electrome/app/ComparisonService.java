@@ -4,13 +4,17 @@ import io.github.bovinemagnet.electrome.core.cost.BillBreakdown;
 import io.github.bovinemagnet.electrome.core.cost.CostingEngine;
 import io.github.bovinemagnet.electrome.core.domain.DateRange;
 import io.github.bovinemagnet.electrome.core.domain.UsageData;
+import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Costs every known plan over a window and ranks them. */
 @ApplicationScoped
@@ -53,10 +57,20 @@ public class ComparisonService {
      * exactly this code, so a scenario and the baseline can never diverge in their arithmetic.
      */
     public Comparison compare(DateRange range, UsageData usage) {
-        var bills = new ArrayList<BillBreakdown>();
-        for (var plan : planStore.plans()) {
-            bills.add(engine.cost(usage, plan, range));
+        var plans = planStore.plans();
+        var key = new Costed(usage, plans, range, baselinePlanId.orElse(null));
+        var cached = cache.get(key);
+        if (cached != null) {
+            return cached;
         }
+
+        // Every plan is independent of every other, and a live harvest is a few hundred of
+        // them against seventeen thousand intervals each. The costing engine holds no mutable
+        // state, so this is the one place in the application where a parallel stream earns its
+        // keep. Order is restored by the sort below rather than relied on from the stream.
+        var bills = new ArrayList<>(plans.parallelStream()
+                .map(plan -> engine.cost(usage, plan, range))
+                .toList());
         bills.sort(Comparator.comparing(BillBreakdown::totalRounded));
 
         // Absent when the configured plan file is missing, which must not break the page: the
@@ -80,6 +94,30 @@ public class ComparisonService {
                     baselineTotal == null ? null : bill.totalRounded().subtract(baselineTotal),
                     bill.plan().id().equals(baselineId)));
         }
-        return new Comparison(range, results, baselineId);
+        var comparison = new Comparison(range, results, baselineId);
+
+        // A handful of entries, discarded wholesale when it fills. Scenario modelling costs
+        // against derived series that will never be asked for again, so an unbounded cache
+        // would grow with every what-if a reader tries.
+        if (cache.size() >= MAX_CACHED) {
+            cache.clear();
+        }
+        cache.put(key, comparison);
+        return comparison;
     }
+
+    /**
+     * What a costing depended on.
+     *
+     * <p>The usage series is held by identity rather than by value: {@code UsageSeries} does
+     * not define equality, so two series with the same numbers are different keys. That is the
+     * safe direction to be wrong in — a scenario series that conserves energy exactly would
+     * otherwise collide with the baseline it was derived from and be served its answer.
+     */
+    private record Costed(UsageData usage, List<Plan> plans, DateRange range, String baseline) {}
+
+    /** Re-rendering a page must be free; remembering every what-if must not be. */
+    private static final int MAX_CACHED = 8;
+
+    private final Map<Costed, Comparison> cache = new ConcurrentHashMap<>();
 }

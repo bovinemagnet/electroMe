@@ -1,0 +1,11 @@
+# Ranking fixture.
+id: mid-d
+name: Middling D
+retailer: Retailer D
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: flatRate
+    cents: 26

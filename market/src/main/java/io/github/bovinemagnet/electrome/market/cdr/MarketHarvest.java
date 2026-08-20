@@ -75,8 +75,7 @@ public final class MarketHarvest {
                     mapped.add(results.get(i).get());
                 } catch (ExecutionException e) {
                     var cause = e.getCause();
-                    skipped.add(candidates.get(i).summary().planId() + ": "
-                            + (cause == null ? e.getMessage() : cause.getMessage()));
+                    skipped.add(candidates.get(i).summary().planId() + ": " + reasonOf(cause, e));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new IllegalStateException("Harvest interrupted", e);
@@ -93,6 +92,20 @@ public final class MarketHarvest {
                 report,
                 retainFor(distinct, conditions),
                 retainFor(distinct, extras, PlanExtras::isEmpty));
+    }
+
+    /**
+     * Why one plan was skipped, without repeating which plan it was.
+     *
+     * <p>{@code UnmappablePlanException} names the plan in its message, and the caller prefixes
+     * the identifier too, so using the message here would give every entry a unique text and
+     * the report would count every gap as one of a kind. The reason alone is what groups.
+     */
+    private static String reasonOf(Throwable cause, ExecutionException wrapper) {
+        if (cause instanceof UnmappablePlanException unmappable) {
+            return unmappable.reason();
+        }
+        return cause == null ? wrapper.getMessage() : cause.getMessage();
     }
 
     /**

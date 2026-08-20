@@ -63,6 +63,31 @@
     </select>
   </label>
 
+  <fieldset class="owns">
+    <legend>I have</legend>
+    <label><input type="checkbox" name="have" value="SOLAR"
+      {#if page.query.household.contains(page.query.solar())}checked{/if}> Solar</label>
+    <label><input type="checkbox" name="have" value="BATTERY"
+      {#if page.query.household.contains(page.query.battery())}checked{/if}> Battery</label>
+    <label><input type="checkbox" name="have" value="ELECTRIC_VEHICLE"
+      {#if page.query.household.contains(page.query.electricVehicle())}checked{/if}> Electric vehicle</label>
+    <label><input type="checkbox" name="have" value="CONCESSION"
+      {#if page.query.household.contains(page.query.concession())}checked{/if}> Concession card</label>
+    <label><input type="checkbox" name="have" value="MEMBERSHIP"
+      {#if page.query.household.contains(page.query.membership())}checked{/if}> A retailer membership</label>
+  </fieldset>
+
+  <label class="tickbox">
+    <input type="checkbox" name="unconditional" value="true"
+      {#if page.query.excludeConditionalDiscounts}checked{/if}>
+    Only totals I do not have to earn
+  </label>
+
+  <label>Saving at least
+    <input type="number" name="minSaving" min="0" step="10" placeholder="any"
+           value="{#if page.query.hasMinimumSaving()}{page.query.minimumSaving}{/if}">
+  </label>
+
   <button type="submit" class="primary">Apply</button>
   <span id="busy" class="htmx-indicator">Costing&hellip;</span>
   <span class="spacer"></span>

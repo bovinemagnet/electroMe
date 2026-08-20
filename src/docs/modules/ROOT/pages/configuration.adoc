@@ -86,6 +86,7 @@ or unreadable file is reported on the page, naming the absolute path it looked f
 failing the boot. Someone who has not yet exported their data should get an explanation, not a
 stack trace.
 
+[#baseline]
 == Why the baseline plan is set, not inferred
 
 `electrome.baseline.plan` is a plain property because there is no rule that can work it out.

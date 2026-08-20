@@ -1,0 +1,11 @@
+# Ranking fixture.
+id: dearest-g
+name: Dearest G
+retailer: Retailer G
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: flatRate
+    cents: 34

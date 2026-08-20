@@ -1,0 +1,17 @@
+# Ranking fixture.
+id: discounted
+name: Discounted Deal
+retailer: Retailer H
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: flatRate
+    cents: 20
+  - type: discount
+    name: Prompt payment
+    basis: PERCENTAGE
+    scope: TOTAL
+    value: 10
+    condition: pay every bill by its due date

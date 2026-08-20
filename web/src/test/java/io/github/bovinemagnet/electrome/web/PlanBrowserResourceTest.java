@@ -59,10 +59,12 @@ class PlanBrowserResourceTest {
 
     @Test
     void honoursAShapeCriterion() {
+        // Asserted on the row link rather than the plan name: the verdict above the table
+        // names the cheapest plan of all, which is deliberately not narrowed by criteria.
         given().queryParam("shape", "TIME_OF_USE").when().get("/fragments/browser").then()
                 .statusCode(200)
                 .body(containsString("Time of use"))
-                .body(not(containsString(">Flat rate<")));
+                .body(not(containsString("/fragments/browser/flat?")));
     }
 
     @Test

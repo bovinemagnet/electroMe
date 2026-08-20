@@ -22,6 +22,44 @@
 </section>
 
 {#else}
+{#if page.verdict.known()}
+<section class="panel verdict-panel">
+  <p class="eyebrow" style="margin-bottom:4px">The answer</p>
+  <p style="font-size:17px; line-height:1.55; margin-top:0">
+    Cheapest of all {page.total} plans costed that you can sign up to, over these
+    {shell.window.days()} days:
+    <strong>{page.verdict.planName()}</strong> from {page.verdict.retailer()},
+    <strong class="num">{money:dollars(page.verdict.total())}</strong>{#if page.verdict.comparedToBaseline()}{#if page.verdict.isCurrentPlan()} &mdash; which is the plan you are already on{#else if page.verdict.savesMoney()} &mdash; <strong class="num">{money:dollars(page.verdict.saving())}</strong> less than your current plan{#else} &mdash; no cheaper than your current plan{/if}{/if}.{#if page.verdict.assumesDiscountCondition()}
+    That total holds only if you {page.verdict.discountConditions()}{/if}{#if page.verdict.hasRequirements()}
+    It is offered only to households that qualify: {#for chip in page.verdict.requirements}<span class="chip">{chip.label()}</span>{/for}{/if}
+  </p>
+  {#if !page.verdict.cheaperThanEverythingIneligible()}
+  <p class="explain">
+    A cheaper plan exists, but it needs equipment or a membership you have not said you have.
+    Tell the page what you own to see whether it applies to you.
+  </p>
+  {/if}
+  {#if page.query.restricted()}
+  <p class="explain">
+    This answer is drawn from every plan costed, not from the ones your criteria have narrowed
+    the table to. Which plan is cheapest is a fact about the market rather than about what you
+    have asked to look at.
+  </p>
+  {/if}
+  {#if page.verdict.hasUnpriceable()}
+  <details class="unpriced">
+    <summary>{page.verdict.unpriceable()} plans could not be priced at all</summary>
+    <p class="explain">
+      The harvester refused these rather than guess at them, so none of them is in the ranking
+      below and one of them could be cheaper than the answer above. Each reason is a shape the
+      tariff model cannot hold.
+    </p>
+    <ul>{#for reason in page.verdict.unpriceableReasons}<li>{reason}</li>{/for}</ul>
+  </details>
+  {/if}
+</section>
+{/if}
+
 <section class="panel">
   <p class="eyebrow" style="margin-bottom:4px">What each plan would have cost</p>
   <p class="explain">
@@ -76,6 +114,15 @@
                hx-get="/fragments/browser/{row.bill().plan().id()}?{shell.windowQuery()}"
                hx-target="#detail"
                hx-swap="innerHTML">{row.planName()}</a>{#if row.cheapest}<span class="best-tag">BEST</span>{/if}
+            {#let notes=page.notesFor(row)}
+            {#if notes.qualified()}
+            <div class="chips">
+              {#for chip in notes.chips()}<span class="chip" title="{notes.eligibilityText()}">{chip.label()}</span>{/for}
+              {#if notes.uncostedFees}<span class="chip fees" title="This plan publishes fees that the total beside it does not include.">Fees not costed</span>{/if}
+              {#if !notes.fullyPriced}<span class="chip warn" title="Some of your energy fell outside every charge this plan defines, so its total is a floor rather than a figure.">Partly priced</span>{/if}
+            </div>
+            {/if}
+            {/let}
           </td>
           <td class="plan-sub">{row.retailer()}</td>
           <td class="plan-sub">{row.bill().plan().charges().size()} components</td>
