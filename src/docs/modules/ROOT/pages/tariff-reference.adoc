@@ -13,7 +13,8 @@ A plan file has identity fields and a list of `charges`. This page documents bot
 | `name` | yes | Display name, shown in the comparison.
 | `retailer` | yes | Who sells it. Use `Unknown` if you are still finding out.
 | `zone` | yes | Distribution zone. See <<zones>>.
-| `gstInclusive` | no | Whether the rates below include GST. Defaults to `true`.
+| `gstInclusive` | yes | Whether the rates below include GST. No default — see
+xref:defining-a-plan.adoc#gst[GST].
 | `validFrom` | no | ISO date. Omit for unbounded.
 | `validTo` | no | ISO date. Omit for unbounded.
 | `charges` | yes | At least one. See <<charges>>.

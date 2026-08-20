@@ -1,0 +1,132 @@
+{#include base}
+{#body}
+
+<form id="controls" action="/seasons" method="get">
+  <label>From
+    <input type="date" name="from" value="{shell.window.from}"
+           min="{shell.available.from}" max="{shell.available.to}">
+  </label>
+  <label>To
+    <input type="date" name="to" value="{shell.window.to}"
+           min="{shell.available.from}" max="{shell.available.to}">
+  </label>
+
+  <label>First season starts
+    <select name="seasonFrom">
+      {#for choice in months}
+      <option value="{choice.month}" {#if choice.month == report.split.from()}selected{/if}>{choice.label}</option>
+      {/for}
+    </select>
+  </label>
+  <label>and ends
+    <select name="seasonTo">
+      {#for choice in months}
+      <option value="{choice.month}" {#if choice.month == report.split.to()}selected{/if}>{choice.label}</option>
+      {/for}
+    </select>
+  </label>
+
+  <button type="submit" class="primary">Split the year</button>
+</form>
+
+<p class="explain">
+  Your consumption does not have one shape. A pool running through summer moves thousands of
+  kilowatt hours into the middle of the day, and the plan that wins on that shape can lose on
+  the winter one. This screen prices every plan over
+  <strong>{report.split.label()}</strong> and over <strong>{report.split.otherLabel()}</strong>
+  separately, and asks whether being on the best plan in each beats being on the best plan for
+  the year. The year is cut on month boundaries, because a tariff's own blocks and caps reset
+  monthly at their shortest &mdash; cutting mid-month would let one restart in both halves.
+</p>
+
+{#if report.empty()}
+<section class="panel">
+  <p class="explain">No plans to compare. Add a plan file to your plans directory.</p>
+</section>
+{#else}
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">The answer</p>
+  {#if report.worthSwitching()}
+  <p style="font-size:17px; line-height:1.55">
+    Switching twice a year would have saved
+    <strong class="num">{money:dollars(report.savingFromSwitching())}</strong> over this window:
+    <strong>{report.bestInFirst.planName()}</strong> for {report.split.label()} and
+    <strong>{report.bestInSecond.planName()}</strong> for {report.split.otherLabel()},
+    <span class="num">{money:dollars(report.switchingTotal())}</span> together, against
+    <span class="num">{money:dollars(report.bestSingle.wholeYear())}</span> for staying on
+    {report.bestSingle.planName()} all year.
+  </p>
+  <p class="explain">
+    That figure is what switching is worth before what it costs you to do it. Two changeovers a
+    year means two sets of paperwork, two final bills, and any sign-up benefit you can only
+    claim once. Weigh it against the number above rather than assuming it is free.
+  </p>
+  {#else if report.onePlanWinsBoth()}
+  <p style="font-size:17px; line-height:1.55">
+    No. <strong>{report.bestInFirst.planName()}</strong> is cheapest in both
+    {report.split.label()} and {report.split.otherLabel()}, so there is nothing to switch to.
+  </p>
+  <p class="explain">
+    A more useful answer than a number: it means the annual ranking was not hiding a seasonal
+    one, and you can stop thinking about this.
+  </p>
+  {#else}
+  <p style="font-size:17px; line-height:1.55">
+    No. Switching between the best plan for each season would not have beaten staying on
+    <strong>{report.bestSingle.planName()}</strong> all year.
+  </p>
+  {/if}
+</section>
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">Every plan, both seasons</p>
+  <p class="explain">
+    Cheapest over the whole window first. The two season columns add up to the year column &mdash;
+    which is what makes a seasonal figure checkable against an annual one &mdash; give or take a
+    cent, because all three are rounded separately. A plan whose seasons genuinely do not add up
+    is marked, and why is set out below the table.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th class="right">{report.split.label()}</th>
+          <th class="right">{report.split.otherLabel()}</th>
+          <th class="right">Whole window</th>
+        </tr>
+      </thead>
+      <tbody>
+      {#for row in report.plans}
+        <tr class="{#if row.planId() == report.bestSingle.planId()}cheapest{/if}">
+          <td>
+            <div class="plan-name">{row.planName()}{#if row.planId() == report.bestSingle.planId()}<span class="best-tag">BEST</span>{/if}{#if !row.decomposes()}<abbr class="conditional-total" title="{row.caveat()}">*</abbr>{/if}</div>
+            <div class="plan-sub">{row.retailer()}</div>
+          </td>
+          <td class="right num" style="color:{#if row.planId() == report.bestInFirst.planId()}var(--offpeak){#else}inherit{/if}">
+            {money:dollars(row.first())}{#if row.planId() == report.bestInFirst.planId()} &check;{/if}
+          </td>
+          <td class="right num" style="color:{#if row.planId() == report.bestInSecond.planId()}var(--offpeak){#else}inherit{/if}">
+            {money:dollars(row.second())}{#if row.planId() == report.bestInSecond.planId()} &check;{/if}
+          </td>
+          <td class="right num" style="font-size:17px; font-weight:600">{money:dollars(row.wholeYear())}</td>
+        </tr>
+      {/for}
+      </tbody>
+    </table>
+  </div>
+
+  {#if report.hasCaveats()}
+  <div class="notice warning" style="margin-top:12px">
+    <h2 style="font-size:14px; margin-top:0">Some plans do not split cleanly</h2>
+    <ul>{#for caveat in report.caveats()}<li>{caveat}</li>{/for}</ul>
+    <p>Their whole-window figure is still exact. It is only the two season figures beside it
+    that cannot be added together.</p>
+  </div>
+  {/if}
+</section>
+
+{/if}
+
+{/body}

@@ -117,6 +117,42 @@ class UsageCsvReaderTest {
                 .hasMessageContaining("line 2");
     }
 
+    // -----------------------------------------------------------------
+    // Field counts. The reader splits on bare commas, which the AGL export allows; a retailer
+    // format that quotes its fields must fail loudly rather than be silently mis-parsed.
+    // -----------------------------------------------------------------
+
+    @Test
+    void rejectsARowWithTooFewFields() {
+        var csv = HEADER + "1,2,3,MRIM,R,Generalusage,01/01/2025 12:00:00 AM,"
+                + "01/01/2025 12:29:59 AM,0.500\n";
+        assertThatThrownBy(() -> UsageCsvReader.read(new StringReader(csv)))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("line 2")
+                .hasMessageContaining("9 fields")
+                .hasMessageContaining("11");
+    }
+
+    @Test
+    void rejectsARowWithTooManyFields() {
+        var csv = HEADER + "1,2,3,MRIM,R,Generalusage,01/01/2025 12:00:00 AM,"
+                + "01/01/2025 12:29:59 AM,0.500,0,A,extra\n";
+        assertThatThrownBy(() -> UsageCsvReader.read(new StringReader(csv)))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("line 2")
+                .hasMessageContaining("12 fields");
+    }
+
+    /** A quoted field containing a comma is the way this assumption breaks in practice. */
+    @Test
+    void saysWhatToDoWhenAFieldIsQuoted() {
+        var csv = HEADER + "1,2,3,MRIM,R,\"General, usage\",01/01/2025 12:00:00 AM,"
+                + "01/01/2025 12:29:59 AM,0.500,0,A\n";
+        assertThatThrownBy(() -> UsageCsvReader.read(new StringReader(csv)))
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("quoted");
+    }
+
     @Test
     void ignoresBlankLines() throws IOException {
         var csv = HEADER

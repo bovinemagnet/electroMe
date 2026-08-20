@@ -265,6 +265,21 @@ class PlanYamlLoaderTest {
         assertThat(unconditional.condition()).isNull();
     }
 
+    /**
+     * A missing GST flag is an error, not a default.
+     *
+     * <p>Fact sheets are published both ways. A plan loaded on the wrong assumption is out by
+     * 10% and every figure on the screen still looks entirely plausible, which is the worst
+     * kind of wrong this application can be.
+     */
+    @Test
+    void rejectsAPlanThatDoesNotSayWhetherItsRatesIncludeGst() {
+        var yaml = REFERENCE.replace("gstInclusive: true\n", "");
+        assertThatThrownBy(() -> PlanYamlLoader.load(yaml))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must state gstInclusive");
+    }
+
     @Test
     void rejectsAnUnknownChargeType() {
         var yaml = """

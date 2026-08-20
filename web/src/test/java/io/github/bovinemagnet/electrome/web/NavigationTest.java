@@ -73,6 +73,11 @@ class NavigationTest {
     }
 
     @Test
+    void theSeasonalScreenCarriesTheWindowOnEveryNavigationLink() {
+        everyNavigationLinkCarriesTheWindow(screen("/seasons"));
+    }
+
+    @Test
     void theWindowControlIsPrefilledWithTheWindowInForce() {
         // Reflecting the window back into the control is what makes it survive the next change.
         assertThat(screen("/plans")).contains("value=\"" + FROM + "\"");
@@ -89,6 +94,7 @@ class NavigationTest {
     void aScreenOpenedWithNoWindowFallsBackToTheDefaultRatherThanFailing() {
         given().when().get("/plans").then().statusCode(200);
         given().when().get("/").then().statusCode(200);
+        given().when().get("/seasons").then().statusCode(200);
     }
 
     @Test

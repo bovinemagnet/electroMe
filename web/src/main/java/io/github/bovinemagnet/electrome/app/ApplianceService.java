@@ -34,16 +34,32 @@ public class ApplianceService {
 
     private final CostingEngine engine = new CostingEngine();
 
+    /** One appliance and the half hours this plan wants it to run in. */
+    public record ScheduledLoad(ApplianceLoad load, LoadSchedule schedule) {}
+
     /** One plan's answer: when to run, what it costs, and what not bothering would cost. */
     public record PlanOutcome(
             Plan plan,
-            LoadSchedule schedule,
+            List<ScheduledLoad> scheduled,
             BigDecimal totalWithout,
             BigDecimal totalWith,
             BigDecimal naiveCost,
             String naiveDescription,
             boolean timingMatters,
             String inexactBecause) {
+
+        public PlanOutcome {
+            scheduled = List.copyOf(scheduled);
+        }
+
+        /**
+         * The only schedule, for the single-appliance question the screen asks.
+         *
+         * <p>Null where the appliance has no schedule to make, as air conditioning does not.
+         */
+        public LoadSchedule schedule() {
+            return scheduled.isEmpty() ? null : scheduled.get(0).schedule();
+        }
 
         /** What the appliance adds to the bill, by full costing rather than by estimate. */
         public BigDecimal annualApplianceCost() {
@@ -68,13 +84,22 @@ public class ApplianceService {
      * @param after every plan ranked with the appliance added and optimally scheduled
      */
     public record Outcome(
-            ApplianceLoad load,
+            List<ApplianceLoad> loads,
             List<PlanOutcome> perPlan,
             Comparison before,
             Comparison after,
             boolean fits,
             BigDecimal shortfallKWh,
             String workableDeadline) {
+
+        public Outcome {
+            loads = List.copyOf(loads);
+        }
+
+        /** The only appliance, for the single-appliance question the screen asks. */
+        public ApplianceLoad load() {
+            return loads.isEmpty() ? null : loads.get(0);
+        }
 
         public PlanOutcome forPlan(String planId) {
             return perPlan.stream()
@@ -111,6 +136,24 @@ public class ApplianceService {
 
     public Outcome evaluate(
             UsageData usage, List<Plan> plans, ApplianceLoad load, DateRange range) {
+        return evaluate(usage, plans, List.of(load), range);
+    }
+
+    /**
+     * Several appliances at once, each scheduled on its own terms.
+     *
+     * <p>A household with two cars does not have one car twice. They want different amounts of
+     * energy, are plugged in at different times, and are charged on different nights, so each
+     * gets its own schedule against each plan's own rates. What they cost together is then a
+     * single full costing of the series with all of them in it, which is why the figure is
+     * exact even though the schedules were chosen independently.
+     *
+     * <p>Independent scheduling is the approximation that remains, and it only bites where one
+     * appliance can change what the next one pays — a capped window, a block rate, a demand
+     * charge. Those plans already say so through {@link PlanOutcome#inexactBecause()}.
+     */
+    public Outcome evaluate(
+            UsageData usage, List<Plan> plans, List<ApplianceLoad> loads, DateRange range) {
 
         var outcomes = new ArrayList<PlanOutcome>();
         var billsBefore = new ArrayList<BillBreakdown>();
@@ -121,33 +164,49 @@ public class ApplianceService {
         String workableDeadline = null;
 
         for (var plan : plans) {
-            var profile = profileFor(plan, usage, load);
-            var schedule = schedule(load, profile);
+            var scheduled = new ArrayList<ScheduledLoad>();
+            String inexactBecause = null;
+            boolean timingMatters = false;
+            var with = usage;
 
-            if (schedule != null && !schedule.fits()) {
-                fits = false;
-                shortfall = schedule.shortfallKWh();
-                workableDeadline = clock(schedule.workableDeadlineMinute());
+            for (var load : loads) {
+                var profile = profileFor(plan, usage, load);
+                var schedule = schedule(load, profile);
+
+                if (schedule != null && !schedule.fits()) {
+                    fits = false;
+                    shortfall = schedule.shortfallKWh();
+                    workableDeadline = clock(schedule.workableDeadlineMinute());
+                }
+                if (schedule != null && schedule.timingMatters()) {
+                    timingMatters = true;
+                }
+                if (inexactBecause == null && profile != null) {
+                    inexactBecause = profile.inexactBecause();
+                }
+
+                scheduled.add(new ScheduledLoad(load, schedule));
+                with = new AddAppliance(load, schedule).applyTo(with);
             }
 
             var without = engine.cost(usage, plan, range);
-            var with = engine.cost(new AddAppliance(load, schedule).applyTo(usage), plan, range);
+            var after = engine.cost(with, plan, range);
 
             billsBefore.add(without);
-            billsAfter.add(with);
+            billsAfter.add(after);
 
             outcomes.add(new PlanOutcome(
                     plan,
-                    schedule,
+                    List.copyOf(scheduled),
                     without.totalRounded(),
-                    with.totalRounded(),
-                    naiveCost(usage, plan, load, range, without.totalRounded()),
-                    naiveDescription(load),
-                    schedule != null && schedule.timingMatters(),
-                    profile == null ? null : profile.inexactBecause()));
+                    after.totalRounded(),
+                    naiveCost(usage, plan, loads, range, without.totalRounded()),
+                    naiveDescription(loads),
+                    timingMatters,
+                    inexactBecause));
         }
 
-        return new Outcome(load, List.copyOf(outcomes),
+        return new Outcome(List.copyOf(loads), List.copyOf(outcomes),
                 rank(billsBefore, range), rank(billsAfter, range),
                 fits, shortfall, workableDeadline);
     }
@@ -171,42 +230,59 @@ public class ApplianceService {
     }
 
     /**
-     * What the appliance costs run as soon as it is available.
+     * What the appliances cost run as soon as they are available.
      *
      * <p>Plugging in and charging straight away is what happens without a timer, so the gap
      * between this and the recommendation is the value of setting one. Anything else would be
      * comparing the recommendation against a strawman.
+     *
+     * <p>All of them at once, because that is what an untimed household actually does: two cars
+     * both plugged in on arrival draw together, and pricing them one at a time would miss it.
      */
-    private BigDecimal naiveCost(UsageData usage, Plan plan, ApplianceLoad load,
+    private BigDecimal naiveCost(UsageData usage, Plan plan, List<ApplianceLoad> loads,
             DateRange range, BigDecimal baseline) {
-        if (!(load instanceof SchedulableLoad schedulable)) {
+
+        var with = usage;
+        boolean any = false;
+        for (var load : loads) {
+            if (!(load instanceof SchedulableLoad schedulable)) {
+                continue;
+            }
+            var immediately = new SchedulableLoad(
+                    schedulable.label(), schedulable.energyPerRunKWh(), schedulable.powerKW(),
+                    schedulable.availableFromMinute(),
+                    // A window exactly long enough to start straight away and run to completion.
+                    Math.floorMod(schedulable.availableFromMinute()
+                            + schedulable.slotsNeeded() * 30, 24 * 60),
+                    schedulable.runsPerWeek(), schedulable.months(),
+                    false, schedulable.controlledCircuit());
+
+            var profile = profileFor(plan, usage, immediately);
+            var schedule = LoadScheduler.schedule(immediately, profile);
+            if (!schedule.fits()) {
+                return baseline;
+            }
+            with = new AddAppliance(immediately, schedule).applyTo(with);
+            any = true;
+        }
+        if (!any) {
             return BigDecimal.ZERO;
         }
-        var immediately = new SchedulableLoad(
-                schedulable.label(), schedulable.energyPerRunKWh(), schedulable.powerKW(),
-                schedulable.availableFromMinute(),
-                // A window exactly long enough to start straight away and run to completion.
-                Math.floorMod(schedulable.availableFromMinute()
-                        + schedulable.slotsNeeded() * 30, 24 * 60),
-                schedulable.runsPerWeek(), schedulable.months(),
-                false, schedulable.controlledCircuit());
-
-        var profile = profileFor(plan, usage, immediately);
-        var schedule = LoadScheduler.schedule(immediately, profile);
-        if (!schedule.fits()) {
-            return baseline;
-        }
-        var with = engine.cost(
-                new AddAppliance(immediately, schedule).applyTo(usage), plan, range);
-        return with.totalRounded().subtract(baseline);
+        return engine.cost(with, plan, range).totalRounded().subtract(baseline);
     }
 
-    private static String naiveDescription(ApplianceLoad load) {
-        if (load instanceof SchedulableLoad schedulable) {
-            return "starting at " + clock(schedulable.availableFromMinute())
-                    + ", as it would without a timer";
+    /** When an untimed household would start them, named in the order they were asked for. */
+    private static String naiveDescription(List<ApplianceLoad> loads) {
+        var starts = new ArrayList<String>();
+        for (var load : loads) {
+            if (load instanceof SchedulableLoad schedulable) {
+                starts.add(clock(schedulable.availableFromMinute()));
+            }
         }
-        return "";
+        if (starts.isEmpty()) {
+            return "";
+        }
+        return "starting at " + String.join(" and ", starts) + ", as it would without a timer";
     }
 
     private static Comparison rank(List<BillBreakdown> bills, DateRange range) {

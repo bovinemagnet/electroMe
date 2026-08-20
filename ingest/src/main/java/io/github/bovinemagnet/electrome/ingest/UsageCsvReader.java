@@ -27,7 +27,20 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
-/** Reads a retailer half-hourly interval export into a {@link UsageImport}. */
+/**
+ * Reads a retailer half-hourly interval export into a {@link UsageImport}.
+ *
+ * <p><strong>Rows are split on bare commas.</strong> No quoting, no escaping: the AGL export
+ * this was written against carries none, and a hand-written split over 35,000 rows is both
+ * faster and easier to produce a useful error from than a general CSV parser would be.
+ *
+ * <p>That is an assumption about one retailer's format, not a property of CSV, and the way it
+ * breaks is silent: a quoted field containing a comma splits into two and every column after it
+ * shifts, so timestamps parse as quality flags and the import succeeds with nonsense in it. To
+ * stop that, every row must carry exactly as many fields as the header. A retailer format that
+ * quotes its fields fails here, loudly, naming the line — which is the signal to reach for a
+ * real CSV parser rather than to widen this one.
+ */
 public final class UsageCsvReader {
 
     private static final DateTimeFormatter TIMESTAMP = new DateTimeFormatterBuilder()
@@ -64,7 +77,8 @@ public final class UsageCsvReader {
         if (headerLine == null) {
             throw new IOException("The file is empty");
         }
-        var columns = indexColumns(headerLine);
+        var header = headerLine.split(",", -1);
+        var columns = indexColumns(header);
 
         var consumption = new ArrayList<IntervalReading>();
         var export = new ArrayList<IntervalReading>();
@@ -86,6 +100,13 @@ public final class UsageCsvReader {
             }
             rowsRead++;
             var fields = line.split(",", -1);
+            if (fields.length != header.length) {
+                throw new IOException(
+                        "line " + lineNumber + " has " + fields.length + " fields, but the "
+                        + "header has " + header.length + ". This reader splits on bare commas "
+                        + "and does not understand quoted fields; if this file quotes a field "
+                        + "containing a comma, it needs a CSV parser rather than this reader.");
+            }
 
             String rateType = field(fields, columns, "RateTypeDescription", lineNumber).trim();
             rateTypes.add(rateType);
@@ -154,8 +175,7 @@ public final class UsageCsvReader {
         return Duration.ofMinutes(minutes);
     }
 
-    private static Map<String, Integer> indexColumns(String headerLine) throws IOException {
-        var header = headerLine.split(",", -1);
+    private static Map<String, Integer> indexColumns(String[] header) throws IOException {
         var index = new HashMap<String, Integer>();
         for (int i = 0; i < header.length; i++) {
             index.put(header[i].trim(), i);
