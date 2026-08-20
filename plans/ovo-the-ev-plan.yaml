@@ -1,0 +1,14 @@
+# OVO Energy "The EV Plan", AusNet distribution zone.
+# Retailer fact sheet, retrieved 20 August 2026. Rates as published, GST inclusive.
+id: ovo-the-ev-plan
+name: The EV Plan
+retailer: OVO Energy
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 143.077
+  - type: timeOfUse
+    bands:
+      - { from: "00:00", to: "06:00", days: ALL, cents: 4.5 }
+      - { from: "06:00", to: "24:00", days: ALL, cents: 32.934 }

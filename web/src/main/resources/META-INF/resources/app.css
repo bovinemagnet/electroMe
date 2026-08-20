@@ -167,6 +167,15 @@ button.primary:hover { color: var(--bg); filter: brightness(1.08); }
 }
 .verdict .badge.dearer { color: var(--peak); }
 
+/* A total that only holds if the household earns a conditional discount. */
+.conditional-total {
+  color: var(--warn);
+  font-weight: 700;
+  cursor: help;
+  text-decoration: none;
+  margin-left: 2px;
+}
+
 /* ---------- stats ---------- */
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 16px; }

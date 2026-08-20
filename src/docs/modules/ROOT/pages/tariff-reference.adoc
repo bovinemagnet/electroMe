@@ -72,6 +72,42 @@ xref:defining-a-plan.adoc#tiling[Bands must tile the day].
 `days` accepts `ALL`, `WEEKDAYS`, `WEEKENDS`, `BUSINESS_DAYS`. `BUSINESS_DAYS` excludes public
 holidays; `WEEKDAYS` does not.
 
+Real Victorian plans often cap their cheap windows rather than pricing them flat. A plan might
+price the first 50 kWh of each day's 11:00-15:00 consumption at nothing and the rest of that
+window at a small rate, while its peak window carries its own independent daily kWh block. A band
+supports this by declaring `tiers` and `reset` instead of `cents`: a band must declare exactly one
+of `cents` or `tiers`, and declaring both is rejected. `reset` is required when `tiers` is used,
+and rejected alongside `cents`; it accepts the same values as the `tiered` charge type described
+below on this page — `DAILY`, `MONTHLY`, `QUARTERLY`, `ANNUAL`. The tier rules are shared too: the
+last tier must have no `upToKWh` — it is the unbounded balance — and thresholds must ascend.
+
+[source,yaml]
+----
+- type: timeOfUse
+  bands:
+    - from: "11:00"
+      to: "15:00"
+      days: ALL
+      reset: DAILY
+      tiers:
+        - { upToKWh: 50, cents: 0.0 }
+        - { cents: 9.405 }
+    - from: "15:00"
+      to: "11:00"
+      days: ALL
+      reset: DAILY
+      tiers:
+        - { upToKWh: 15, cents: 31.559 }
+        - { cents: 33.963 }
+----
+
+Each band accumulates its own allowance separately — two capped bands on the same plan never
+spend each other's kWh. This carries through to the bill breakdown, which must reconcile line by
+line against a retailer's: a capped band produces one line per block, labelled
+`Usage 11:00-15:00 to 50 kWh` and `Usage 11:00-15:00 balance`. A band priced with plain `cents`
+keeps the single, unsuffixed line it has always had — `Usage 16:00-21:00`, say. Tiling is
+unaffected either way: capped or not, bands must still cover the whole day exactly once.
+
 === tiered
 
 Block rates that reset periodically. The last tier must have no `upToKWh` — it is the unbounded
@@ -157,11 +193,18 @@ Applied after every other charge.
   basis: PERCENTAGE         # PERCENTAGE | FIXED
   scope: USAGE              # USAGE | SUPPLY | TOTAL
   value: 5                  # a percentage, or an amount in cents when basis is FIXED
-  conditional: true         # depends on behaviour, such as paying on time
+  condition: pay every bill by its due date   # omit when the discount is unconditional
 ----
 
 `scope` decides what the discount applies to. A discount advertised as "5% off" is almost always
 `USAGE` only, not `TOTAL` — check the fine print, because the difference is the supply charge.
+
+`condition` is free text rather than a flag because a retailer publishes a before- and an
+after-discount column, and it is the after column that wins a comparison. Naming the condition
+lets the comparison table and the plan detail page say what a total assumes, rather than only
+that it assumes something. Where a plan carries a conditional discount, the comparison table
+marks its total with an asterisk carrying the condition text, and the plan detail page shows the
+condition in full. Omit `condition` and the discount is unconditional — no marker is shown.
 
 == Rounding and precision
 

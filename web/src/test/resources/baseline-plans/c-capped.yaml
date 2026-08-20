@@ -1,0 +1,25 @@
+# A capped free window and a pay-on-time discount: the two shapes a real GloBird plan uses.
+id: capped
+name: Capped window plan
+retailer: Test
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: timeOfUse
+    bands:
+      - from: "11:00"
+        to: "15:00"
+        days: ALL
+        reset: DAILY
+        tiers:
+          - { upToKWh: 1, cents: 0.0 }
+          - { cents: 20 }
+      - { from: "15:00", to: "11:00", days: ALL, cents: 30 }
+  - type: discount
+    name: Pay on time
+    basis: PERCENTAGE
+    scope: USAGE
+    value: 10
+    condition: pay every bill by its due date

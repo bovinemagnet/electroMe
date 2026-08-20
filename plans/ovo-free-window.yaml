@@ -1,0 +1,19 @@
+# OVO Energy free-window plan, AusNet distribution zone.
+# Retailer fact sheet, retrieved 20 August 2026. Rates as published, GST inclusive.
+#
+# No cap on the free window is published, so it is modelled uncapped. The retailer's terms
+# carry a reasonable-use policy instead, which is a judgement rather than a number and cannot
+# be costed. A household planning to move a large load into 11:00-15:00 should read it: the
+# figure this plan produces is the best case that policy allows.
+id: ovo-free-window
+name: Free window
+retailer: OVO Energy
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 132.077
+  - type: timeOfUse
+    bands:
+      - { from: "11:00", to: "15:00", days: ALL, cents: 0.0 }
+      - { from: "15:00", to: "11:00", days: ALL, cents: 32.934 }

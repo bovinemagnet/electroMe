@@ -1,8 +1,10 @@
-# The tariff currently in force at the premises.
-# Retailer confirmed as AGL. The plan name is still unknown; update when the bill is to hand.
-id: current-tou
-name: Current tariff
-retailer: AGL
+# Powershop time-of-use tariff, AusNet distribution zone.
+# Rates as published on the retailer's fact sheet; GST inclusive.
+# This file previously claimed to be the household's current AGL tariff. It never was:
+# the rates below are Powershop's. The household's own plan is agl-flat-current.yaml.
+id: powershop-tou
+name: Powershop time of use
+retailer: Powershop
 zone: AUSNET
 gstInclusive: true
 charges:

@@ -1,6 +1,7 @@
 package io.github.bovinemagnet.electrome.core.cost;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import io.github.bovinemagnet.electrome.core.domain.DateRange;
 import io.github.bovinemagnet.electrome.core.domain.IntervalReading;
@@ -54,6 +55,16 @@ class CostingEngineTest {
             }
         }
         return UsageData.consumptionOnly(UsageSeries.of(readings));
+    }
+
+    /** One day of half-hourly readings, each of the same size. */
+    private static List<IntervalReading> dayAt(LocalDate date, String eachKWh) {
+        var readings = new ArrayList<IntervalReading>();
+        for (int minute = 0; minute < 1440; minute += 30) {
+            readings.add(new IntervalReading(date.atStartOfDay().plusMinutes(minute),
+                    Duration.ofMinutes(30), new BigDecimal(eachKWh), Quality.ACTUAL));
+        }
+        return readings;
     }
 
     private static DateRange on(LocalDate date) {
@@ -148,6 +159,91 @@ class CostingEngineTest {
         assertThat(bill.subtotal(ChargeKind.USAGE)).isEqualByComparingTo("23.20");
     }
 
+    /**
+     * A capped window, over and under its cap.
+     *
+     * <p>GloBird's free window is the reason this exists: the first block of a day's
+     * consumption inside the window is priced differently from the rest of it.
+     */
+    @Test
+    void costsACappedBandBlockByBlockWithinEachDay() {
+        var plan = planOf(new DailySupply(BigDecimal.ZERO), new TimeOfUse(List.of(
+                Band.parseTiered("11:00", "15:00", DaySelector.ALL, ResetPeriod.DAILY, List.of(
+                        new Tier(new BigDecimal("5"), BigDecimal.ZERO),
+                        new Tier(null, new BigDecimal("10")))),
+                Band.parse("15:00", "11:00", DaySelector.ALL, new BigDecimal("20")))));
+
+        // A light day stays under the 5 kWh cap; a heavy one spills past it.
+        var readings = new ArrayList<IntervalReading>();
+        readings.addAll(dayAt(JAN1, "0.5"));
+        readings.addAll(dayAt(JAN1.plusDays(1), "1"));
+        var bill = ENGINE.cost(UsageData.consumptionOnly(UsageSeries.of(readings)), plan,
+                new DateRange(JAN1, JAN1.plusDays(1)));
+
+        var capped = bill.lines().stream()
+                .filter(l -> l.label().startsWith("Usage 11:00-15:00")).toList();
+        assertThat(capped).extracting(ChargeLine::label)
+                .containsExactly("Usage 11:00-15:00 to 5 kWh", "Usage 11:00-15:00 balance");
+        // 4 kWh on the light day and the whole 5 kWh cap on the heavy one.
+        assertThat(capped.get(0).quantity()).isEqualByComparingTo("9");
+        assertThat(capped.get(0).cost()).isEqualByComparingTo("0");
+        // Only the heavy day spills, and only by 3 kWh.
+        assertThat(capped.get(1).quantity()).isEqualByComparingTo("3");
+        assertThat(capped.get(1).cost()).isEqualByComparingTo("0.30");
+        assertThat(bill.complete()).isTrue();
+    }
+
+    @Test
+    void twoCappedBandsDoNotSpendEachOthersCap() {
+        var plan = planOf(new DailySupply(BigDecimal.ZERO), new TimeOfUse(List.of(
+                Band.parseTiered("00:00", "12:00", DaySelector.ALL, ResetPeriod.DAILY, List.of(
+                        new Tier(new BigDecimal("3"), new BigDecimal("1")),
+                        new Tier(null, new BigDecimal("2")))),
+                Band.parseTiered("12:00", "24:00", DaySelector.ALL, ResetPeriod.DAILY, List.of(
+                        new Tier(new BigDecimal("3"), new BigDecimal("10")),
+                        new Tier(null, new BigDecimal("20")))))));
+
+        var bill = ENGINE.cost(day(JAN1, "1"), plan, on(JAN1));
+
+        // 24 kWh falls in each half of the day, and each band fills its own 3 kWh block.
+        assertThat(bill.lines()).extracting(ChargeLine::label, l -> l.quantity().stripTrailingZeros())
+                .contains(
+                        tuple("Usage 00:00-12:00 to 3 kWh", new BigDecimal("3")),
+                        tuple("Usage 00:00-12:00 balance", new BigDecimal("21")),
+                        tuple("Usage 12:00-24:00 to 3 kWh", new BigDecimal("3")),
+                        tuple("Usage 12:00-24:00 balance", new BigDecimal("21")));
+        assertThat(bill.subtotal(ChargeKind.USAGE)).isEqualByComparingTo("4.95");
+    }
+
+    @Test
+    void aCappedBandCanResetMonthlyRatherThanDaily() {
+        var plan = planOf(new DailySupply(BigDecimal.ZERO), new TimeOfUse(List.of(
+                Band.parseTiered("00:00", "24:00", DaySelector.ALL, ResetPeriod.MONTHLY, List.of(
+                        new Tier(new BigDecimal("100"), new BigDecimal("10")),
+                        new Tier(null, new BigDecimal("20")))))));
+
+        var jan25 = LocalDate.of(2025, 1, 25);
+        var feb5 = LocalDate.of(2025, 2, 5);
+        var bill = ENGINE.cost(days(jan25, feb5, "0.5"), plan, new DateRange(jan25, feb5));
+
+        // 24 kWh a day: 168 kWh in January and 120 in February, each month capped at 100.
+        assertThat(bill.lines().get(1).quantity()).isEqualByComparingTo("200");
+        assertThat(bill.lines().get(2).quantity()).isEqualByComparingTo("88");
+        assertThat(bill.subtotal(ChargeKind.USAGE)).isEqualByComparingTo("37.60");
+    }
+
+    @Test
+    void anUncappedBandKeepsItsPlainLabelAndSingleRate() {
+        var plan = planOf(new DailySupply(BigDecimal.ZERO), new TimeOfUse(List.of(
+                Band.parse("00:00", "24:00", DaySelector.ALL, new BigDecimal("24.77")))));
+        var bill = ENGINE.cost(day(JAN1, "1"), plan, on(JAN1));
+        var usage = bill.lines().stream().filter(l -> l.kind() == ChargeKind.USAGE).toList();
+        assertThat(usage).hasSize(1);
+        assertThat(usage.get(0).label()).isEqualTo("Usage 00:00-24:00");
+        assertThat(usage.get(0).quantity()).isEqualByComparingTo("48");
+        assertThat(usage.get(0).cost()).isEqualByComparingTo("11.8896");
+    }
+
     @Test
     void costsDemandOnThePeakIntervalWithinTheWindow() {
         var readings = new ArrayList<IntervalReading>();
@@ -203,10 +299,45 @@ class CostingEngineTest {
         var plan = planOf(new DailySupply(new BigDecimal("100")),
                 new FlatRate(new BigDecimal("25")),
                 new Discount("Usage discount", DiscountBasis.PERCENTAGE, DiscountScope.USAGE,
-                        new BigDecimal("10"), false));
+                        new BigDecimal("10"), null));
         var bill = ENGINE.cost(day(JAN1, "1"), plan, on(JAN1));
         assertThat(bill.subtotal(ChargeKind.DISCOUNT)).isEqualByComparingTo("-1.20");
         assertThat(bill.totalRounded()).isEqualByComparingTo("11.80");
+    }
+
+    /**
+     * A discount the household has to earn is priced, and named.
+     *
+     * <p>The arithmetic is the same either way. What differs is the claim the total makes,
+     * and a comparison that cannot tell the two apart quietly ranks a best case against a
+     * certainty.
+     */
+    @Test
+    void aConditionalDiscountNamesWhatTheTotalAssumes() {
+        var plan = planOf(new DailySupply(new BigDecimal("100")),
+                new FlatRate(new BigDecimal("25")),
+                new Discount("Pay on time", DiscountBasis.PERCENTAGE, DiscountScope.USAGE,
+                        new BigDecimal("10"), "pay every bill by its due date"));
+        var bill = ENGINE.cost(day(JAN1, "1"), plan, on(JAN1));
+
+        assertThat(bill.assumesConditions()).isTrue();
+        assertThat(bill.discountConditions())
+                .containsExactly("Pay on time: pay every bill by its due date");
+        assertThat(bill.discountConditionsText())
+                .isEqualTo("Pay on time: pay every bill by its due date");
+        // Costed exactly as an unconditional discount is: only the claim differs.
+        assertThat(bill.subtotal(ChargeKind.DISCOUNT)).isEqualByComparingTo("-1.20");
+    }
+
+    @Test
+    void anUnconditionalDiscountAssumesNothing() {
+        var plan = planOf(new DailySupply(new BigDecimal("100")),
+                new FlatRate(new BigDecimal("25")),
+                new Discount("Welcome credit", DiscountBasis.FIXED, DiscountScope.TOTAL,
+                        new BigDecimal("500"), null));
+        var bill = ENGINE.cost(day(JAN1, "1"), plan, on(JAN1));
+        assertThat(bill.assumesConditions()).isFalse();
+        assertThat(bill.discountConditions()).isEmpty();
     }
 
     @Test
@@ -214,7 +345,7 @@ class CostingEngineTest {
         var plan = planOf(new DailySupply(new BigDecimal("100")),
                 new FlatRate(new BigDecimal("25")),
                 new Discount("Credit", DiscountBasis.FIXED, DiscountScope.TOTAL,
-                        new BigDecimal("500"), false));
+                        new BigDecimal("500"), null));
         var bill = ENGINE.cost(day(JAN1, "1"), plan, on(JAN1));
         assertThat(bill.subtotal(ChargeKind.DISCOUNT)).isEqualByComparingTo("-5.00");
     }

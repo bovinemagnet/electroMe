@@ -24,8 +24,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.TreeSet;
 
@@ -33,6 +35,9 @@ import java.util.TreeSet;
 public final class CostingEngine {
 
     private static final BigDecimal ONE_HUNDRED = new BigDecimal("100");
+
+    /** Accumulation key for a band priced at one rate, which never resets. */
+    private static final Object NO_RESET = new Object();
 
     private final HolidayCalendar holidays;
 
@@ -152,12 +157,25 @@ public final class CostingEngine {
                 charge.centsPerKWh(), dollars(kWh.multiply(charge.centsPerKWh())));
     }
 
+    /**
+     * Usage priced by window, and within a window by block.
+     *
+     * <p>Each band keeps its own running total per reset period, so two capped bands on the
+     * same plan cannot spend each other's cap. The walk is chronological — {@code readings()}
+     * is start-ordered — because a cap is exhausted in the order the meter recorded it, and
+     * knowing <em>when</em> the free window ran out is what cap-aware scheduling needs.
+     */
     private List<ChargeLine> timeOfUseLines(
             TimeOfUse charge, UsageSeries consumption, List<IntervalReading> uncovered) {
-        var totals = new LinkedHashMap<Band, BigDecimal>();
+        var perTier = new LinkedHashMap<Band, BigDecimal[]>();
+        var accumulated = new LinkedHashMap<Band, Map<Object, BigDecimal>>();
         for (var band : charge.bands()) {
-            totals.put(band, BigDecimal.ZERO);
+            var kWh = new BigDecimal[band.tiers().size()];
+            Arrays.fill(kWh, BigDecimal.ZERO);
+            perTier.put(band, kWh);
+            accumulated.put(band, new HashMap<Object, BigDecimal>());
         }
+
         for (var reading : consumption.readings()) {
             Band match = null;
             for (var band : charge.bands()) {
@@ -169,17 +187,69 @@ public final class CostingEngine {
             if (match == null) {
                 uncovered.add(reading);
             } else {
-                totals.merge(match, reading.kWh(), BigDecimal::add);
+                allocate(match, reading, perTier.get(match), accumulated.get(match));
             }
         }
+
         var lines = new ArrayList<ChargeLine>();
-        for (var entry : totals.entrySet()) {
+        for (var entry : perTier.entrySet()) {
             var band = entry.getKey();
-            var kWh = entry.getValue();
-            lines.add(new ChargeLine("Usage " + band.describe(), ChargeKind.USAGE, kWh, Unit.KWH,
-                    band.centsPerKWh(), dollars(kWh.multiply(band.centsPerKWh()))));
+            var kWhPerTier = entry.getValue();
+            for (int i = 0; i < band.tiers().size(); i++) {
+                var tier = band.tiers().get(i);
+                var kWh = kWhPerTier[i];
+                lines.add(new ChargeLine(bandLabel(band, tier), ChargeKind.USAGE, kWh, Unit.KWH,
+                        tier.centsPerKWh(), dollars(kWh.multiply(tier.centsPerKWh()))));
+            }
         }
         return lines;
+    }
+
+    /** Adds one reading to a band's blocks, from wherever the reset period had got to. */
+    private static void allocate(
+            Band band,
+            IntervalReading reading,
+            BigDecimal[] kWhPerTier,
+            Map<Object, BigDecimal> accumulated) {
+
+        Object key = band.reset() == null ? NO_RESET : band.reset().keyFor(reading.date());
+        var consumed = accumulated.getOrDefault(key, BigDecimal.ZERO);
+        var remaining = reading.kWh();
+
+        for (int i = 0; i < band.tiers().size() && remaining.signum() > 0; i++) {
+            Tier tier = band.tiers().get(i);
+            BigDecimal capacity;
+            if (tier.unbounded()) {
+                capacity = remaining;
+            } else {
+                var headroom = tier.thresholdKWh().subtract(consumed);
+                if (headroom.signum() <= 0) {
+                    continue;
+                }
+                capacity = headroom.min(remaining);
+            }
+            kWhPerTier[i] = kWhPerTier[i].add(capacity);
+            consumed = consumed.add(capacity);
+            remaining = remaining.subtract(capacity);
+        }
+        accumulated.put(key, consumed);
+    }
+
+    /**
+     * The bill line for one block of one band.
+     *
+     * <p>An uncapped band keeps the plain window label it has always had, so a bill from
+     * before capped bands existed reconciles line for line against one produced now.
+     */
+    private static String bandLabel(Band band, Tier tier) {
+        String window = "Usage " + band.describe();
+        if (!band.capped()) {
+            return window;
+        }
+        return tier.unbounded()
+                ? window + " balance"
+                : window + " to " + tier.thresholdKWh().stripTrailingZeros().toPlainString()
+                        + " kWh";
     }
 
     private List<ChargeLine> tieredLines(Tiered charge, UsageSeries consumption) {

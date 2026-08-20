@@ -3,10 +3,20 @@ package io.github.bovinemagnet.electrome.core.scenario;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.bovinemagnet.electrome.core.cost.CostingEngine;
+import io.github.bovinemagnet.electrome.core.domain.DateRange;
 import io.github.bovinemagnet.electrome.core.domain.IntervalReading;
 import io.github.bovinemagnet.electrome.core.domain.Quality;
 import io.github.bovinemagnet.electrome.core.domain.UsageData;
 import io.github.bovinemagnet.electrome.core.domain.UsageSeries;
+import io.github.bovinemagnet.electrome.core.tariff.Band;
+import io.github.bovinemagnet.electrome.core.tariff.DailySupply;
+import io.github.bovinemagnet.electrome.core.tariff.DaySelector;
+import io.github.bovinemagnet.electrome.core.tariff.DistributionZone;
+import io.github.bovinemagnet.electrome.core.tariff.Plan;
+import io.github.bovinemagnet.electrome.core.tariff.ResetPeriod;
+import io.github.bovinemagnet.electrome.core.tariff.Tier;
+import io.github.bovinemagnet.electrome.core.tariff.TimeOfUse;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -116,6 +126,83 @@ class LoadShiftTest {
         var after = LoadShift.outOfPeak(new BigDecimal("0.3")).applyTo(withExport);
         assertThat(after.export().totalKWh())
                 .isEqualByComparingTo(withExport.export().totalKWh());
+    }
+
+    // -----------------------------------------------------------------
+    // An arbitrary target window: a capped free window is four hours in the middle of the
+    // day, not six overnight, and whether moving load into it pays is the whole question.
+    // -----------------------------------------------------------------
+
+    @Test
+    void shiftsIntoAnyNamedWindow() {
+        // 16:00-21:00 holds 10 kWh; all of it lands in 11:00-15:00, which held 8 kWh.
+        var after = LoadShift.into(660, 900, BigDecimal.ONE).applyTo(flatDay("1"));
+        assertThat(kWhBetween(after, 960, 1260)).isEqualByComparingTo("0");
+        assertThat(kWhBetween(after, 660, 900)).isEqualByComparingTo("18.0");
+    }
+
+    @Test
+    void conservesEnergyIntoAnArbitraryWindow() {
+        var before = flatDay("1");
+        var after = LoadShift.into(660, 900, BigDecimal.ONE).applyTo(before);
+        assertThat(after.consumption().totalKWh())
+                .isEqualByComparingTo(before.consumption().totalKWh());
+    }
+
+    @Test
+    void conservesEnergyIntoAWindowThatWrapsMidnight() {
+        // A car left on charge from 21:00 to 06:00 is the commonest overnight shift there is,
+        // and 5 kWh across its 18 half hours has no exact decimal share: the day's last
+        // interval must take the remainder or the scenario loses energy and calls it a saving.
+        var before = flatDay("1");
+        var after = LoadShift.into(1260, 360, new BigDecimal("0.5")).applyTo(before);
+        assertThat(after.consumption().totalKWh())
+                .isEqualByComparingTo(before.consumption().totalKWh());
+        assertThat(kWhBetween(after, 960, 1260)).isEqualByComparingTo("5.0");
+    }
+
+    @Test
+    void namesTheWindowItShiftsInto() {
+        assertThat(LoadShift.into(660, 900, BigDecimal.ONE).label())
+                .isEqualTo("Shift 100% of peak load into 11:00-15:00");
+    }
+
+    @Test
+    void rejectsATargetWindowWithNoWidth() {
+        assertThatThrownBy(() -> LoadShift.into(660, 660, BigDecimal.ONE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no width");
+    }
+
+    /**
+     * The point of the exercise: load moved into a capped free window is priced at nothing,
+     * until the cap runs out.
+     */
+    @Test
+    void loadShiftedIntoAFreeWindowIsPricedAtTheFreeRate() {
+        var plan = new Plan("globird", "4 Hour Free", "GloBird", DistributionZone.AUSNET,
+                List.of(new DailySupply(BigDecimal.ZERO), new TimeOfUse(List.of(
+                        Band.parseTiered("11:00", "15:00", DaySelector.ALL, ResetPeriod.DAILY,
+                                List.of(new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                                        new Tier(null, new BigDecimal("9.405")))),
+                        Band.parseTiered("15:00", "11:00", DaySelector.ALL, ResetPeriod.DAILY,
+                                List.of(new Tier(new BigDecimal("15"), new BigDecimal("31.559")),
+                                        new Tier(null, new BigDecimal("33.963"))))))),
+                true, null, null);
+
+        var engine = new CostingEngine();
+        var range = new DateRange(DAY, DAY);
+        var before = engine.cost(flatDay("1"), plan, range);
+        var after = engine.cost(
+                LoadShift.into(660, 900, BigDecimal.ONE).applyTo(flatDay("1")), plan, range);
+
+        // The whole day's 18 kWh of free-window energy sits under the 50 kWh cap, at nothing.
+        var free = after.lines().stream()
+                .filter(l -> l.label().equals("Usage 11:00-15:00 to 50 kWh"))
+                .findFirst().orElseThrow();
+        assertThat(free.quantity()).isEqualByComparingTo("18");
+        assertThat(free.cost()).isEqualByComparingTo("0");
+        assertThat(after.totalRounded()).isLessThan(before.totalRounded());
     }
 
     @Test

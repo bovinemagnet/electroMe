@@ -126,13 +126,45 @@ public final class PlanYamlLoader {
         }
         var bands = new ArrayList<Band>();
         for (JsonNode band : bandNodes) {
-            bands.add(Band.parse(
-                    text(band, "from"),
-                    text(band, "to"),
-                    daySelector(band),
-                    rate(band, "cents", inclusive)));
+            bands.add(band(planId, band, inclusive));
         }
         return new TimeOfUse(bands);
+    }
+
+    /**
+     * One window, priced either at a flat rate or in blocks that reset.
+     *
+     * <p>The two forms are mutually exclusive by design. A band carrying both {@code cents}
+     * and {@code tiers} has no single meaning, and quietly preferring one of them would price
+     * a household's bill from a field the author did not think they were writing.
+     */
+    private static Band band(String planId, JsonNode node, boolean inclusive) {
+        String from = text(node, "from");
+        String to = text(node, "to");
+        String where = "Plan " + planId + " band " + from + "-" + to;
+
+        boolean hasCents = present(node, "cents");
+        boolean hasTiers = present(node, "tiers");
+        if (hasCents == hasTiers) {
+            throw new IllegalArgumentException(
+                    where + " must declare exactly one of cents or tiers");
+        }
+
+        if (hasCents) {
+            if (present(node, "reset")) {
+                throw new IllegalArgumentException(
+                        where + " declares reset, which only applies to a band with tiers");
+            }
+            return Band.parse(from, to, daySelector(node), rate(node, "cents", inclusive));
+        }
+
+        if (!present(node, "reset")) {
+            throw new IllegalArgumentException(
+                    where + " has tiers and so needs a reset period");
+        }
+        return Band.parseTiered(from, to, daySelector(node),
+                ResetPeriod.valueOf(text(node, "reset")),
+                tiers(where, node.get("tiers"), inclusive));
     }
 
     /**
@@ -165,9 +197,14 @@ public final class PlanYamlLoader {
     }
 
     private static Tiered tiered(String planId, JsonNode node, boolean inclusive) {
-        JsonNode tierNodes = node.get("tiers");
+        return new Tiered(
+                ResetPeriod.valueOf(text(node, "reset")),
+                tiers("Plan " + planId + " tiered", node.get("tiers"), inclusive));
+    }
+
+    private static List<Tier> tiers(String where, JsonNode tierNodes, boolean inclusive) {
         if (tierNodes == null || !tierNodes.isArray() || tierNodes.isEmpty()) {
-            throw new IllegalArgumentException("Plan " + planId + " tiered has no tiers");
+            throw new IllegalArgumentException(where + " has no tiers");
         }
         var tiers = new ArrayList<Tier>();
         for (JsonNode tier : tierNodes) {
@@ -176,7 +213,7 @@ public final class PlanYamlLoader {
                     upTo == null || upTo.isNull() ? null : new BigDecimal(upTo.asText()),
                     rate(tier, "cents", inclusive)));
         }
-        return new Tiered(ResetPeriod.valueOf(text(node, "reset")), tiers);
+        return tiers;
     }
 
     private static Demand demand(JsonNode node, boolean inclusive) {
@@ -195,7 +232,7 @@ public final class PlanYamlLoader {
                 DiscountBasis.valueOf(text(node, "basis")),
                 DiscountScope.valueOf(text(node, "scope")),
                 new BigDecimal(text(node, "value")),
-                node.path("conditional").asBoolean(false));
+                present(node, "condition") ? text(node, "condition") : null);
     }
 
     private static DaySelector daySelector(JsonNode node) {
@@ -203,6 +240,11 @@ public final class PlanYamlLoader {
         return days == null || days.isNull()
                 ? DaySelector.ALL
                 : DaySelector.valueOf(days.asText());
+    }
+
+    private static boolean present(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value != null && !value.isNull();
     }
 
     private static BigDecimal rate(JsonNode node, String field, boolean inclusive) {

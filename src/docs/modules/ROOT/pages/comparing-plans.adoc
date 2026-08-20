@@ -14,7 +14,7 @@ Tick two to four plans in xref:browsing-plans.adoc[the plan browser] and press *
 selected*, or go straight to a URL:
 
 ----
-/compare?plans=current-tou,vdo-ausnet-2026-27&from=2025-07-01&to=2026-06-30
+/compare?plans=powershop-tou,vdo-ausnet-2026-27&from=2025-07-01&to=2026-06-30
 ----
 
 The identifiers are the plan `id` values. A comparison is therefore linkable and reproducible —
@@ -30,7 +30,7 @@ The screen leads with one sentence per losing plan:
 
 [quote]
 ____
-Current tariff is $40.85 cheaper than Victorian Default Offer 2026-27 over this window: $266.37
+Powershop time of use is $40.85 cheaper than Victorian Default Offer 2026-27 over this window: $266.37
 of that is its lower shoulder, offset by $125.89 more on middle of day, and $72.56 more on
 overnight / off-peak, less $27.07 across smaller differences.
 ____

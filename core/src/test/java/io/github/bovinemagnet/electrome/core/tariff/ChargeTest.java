@@ -20,7 +20,7 @@ class ChargeTest {
                 new Demand(960, 1260, DaySelector.ALL, ResetPeriod.MONTHLY, new BigDecimal("20")),
                 new SolarFeedIn(new BigDecimal("3.3")),
                 new Discount("Pay on time", DiscountBasis.PERCENTAGE, DiscountScope.USAGE,
-                        new BigDecimal("5"), true));
+                        new BigDecimal("5"), "pay on time"));
         assertThat(charges).allSatisfy(c -> assertThat(c.label()).isNotBlank());
     }
 
@@ -67,7 +67,7 @@ class ChargeTest {
     @Test
     void percentageDiscountMustNotExceedOneHundred() {
         assertThatThrownBy(() -> new Discount("Silly", DiscountBasis.PERCENTAGE,
-                        DiscountScope.TOTAL, new BigDecimal("101"), false))
+                        DiscountScope.TOTAL, new BigDecimal("101"), null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
