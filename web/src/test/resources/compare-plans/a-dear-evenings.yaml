@@ -1,0 +1,14 @@
+# Cheap to be connected, expensive when you get home.
+id: dear-evenings
+name: Dear Evenings
+retailer: Alpha Energy
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 90
+  - type: timeOfUse
+    bands:
+      - { from: "00:00", to: "16:00", days: ALL, cents: 20 }
+      - { from: "16:00", to: "21:00", days: ALL, cents: 60 }
+      - { from: "21:00", to: "24:00", days: ALL, cents: 20 }

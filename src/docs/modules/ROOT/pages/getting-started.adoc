@@ -79,5 +79,6 @@ it looked for.
 == Next steps
 
 * xref:reading-the-dashboard.adoc[Reading the dashboard] — what each figure means.
+* xref:browsing-plans.adoc[Browsing plans] — find and inspect any published tariff.
 * xref:defining-a-plan.adoc[Defining a plan] — add the tariff you are actually on.
 * xref:what-if.adoc[What-if modelling] — what solar, a battery, or shifting load would be worth.

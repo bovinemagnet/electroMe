@@ -1,0 +1,125 @@
+= Browsing plans
+:description: Finding, filtering and inspecting any of the plans published for your network.
+
+Harvesting the market gives you a couple of hundred tariffs. The dashboard answers the question
+you arrived with; this screen is for the one you ask next.
+
+Open it from the navigation, or from *Compare all plans* at the foot of the dashboard shortlist.
+
+== Why the dashboard only shows a shortlist
+
+Ranking two hundred plans in one table renders every row: metres of scrolling, and the single
+most actionable fact — the cheapest plan you can actually sign up to — buried three rows in
+amongst offers that need solar, a battery and an electric vehicle.
+
+So the dashboard shows four kinds of plan and nothing else:
+
+* your own tariff, and any other plan you have defined as a file
+* the cheapest plan anyone can sign up to
+* the cheapest plan that exists at all, with its requirement named beside it
+* the regulated benchmark
+
+Nothing is deleted. The rest moves here.
+
+== The criteria
+
+All filtering happens on the server, over plans that have *already been costed*. Criteria change
+what you are shown, never what was computed, so the counts on the page are always measured
+against the full set.
+
+Search::
+Matches the plan name or the retailer, ignoring case.
+
+Requirements::
+Whether to include plans a household must own or join something to be offered.
+
+Shape::
+The structure of the tariff: flat, time-of-use, block or demand. A plan carrying several is
+described by the most distinguishing one, so a time-of-use plan that also has a demand charge is
+listed as a demand plan.
+
+Sort by::
+What it would cost, the peak rate, the daily supply charge, the effective rate, or the name.
+
+Show::
+How many rows to render. The default is bounded deliberately; *All* is a deliberate act.
+
+Every criterion appears in the URL, so a filtered view can be bookmarked or sent to somebody
+else.
+
+[#requirements]
+== Why plans with requirements are hidden by default
+
+Of the plans a live harvest returns, roughly a fifth need equipment or a membership — solar, a
+battery, an electric vehicle, a subscription — and the cheapest few nearly always do.
+
+Showing them by default puts a number at the top of the page that you may have no way to reach.
+So the default is *Anyone can sign up*, the count of what that hides is always on screen, and one
+click reveals them.
+
+This is an editorial position rather than a technical one, and it is the only place this software
+takes one.
+
+NOTE: Ordinary conditions every plan carries — being in the right distribution zone, having a
+smart meter, being a residential customer — are not treated as requirements. Flagging those would
+mark almost every plan and therefore say nothing.
+
+== Opening a plan
+
+Selecting a plan shows what a comparison row cannot: the tariff itself.
+
+The 24-hour strip::
+Every window drawn to scale across the day, coloured the same way as everywhere else on the site:
+red is the dearest window, amber the middle of the day, blue a shoulder rate, green the cheapest.
+A plan that prices weekdays and weekends differently gets a strip each — drawing both on one axis
+would read as a tariff charging two rates at once. A window running past midnight is drawn at both
+ends of the day, because that is where it falls.
+
+Charges::
+The daily supply charge, and every other component the plan carries.
+
+This bill, line by line::
+What the plan would have cost over the window you have selected, with the arithmetic behind it.
+
+Eligibility::
+Anything you must own or join, quoted in full rather than hidden behind a hover.
+
+[#fees]
+== Fees and incentives are shown but not costed
+
+Retailers publish fees — card processing, paper bills, disconnection, membership — and incentives
+such as sign-up credits and separate feed-in rates. Both are shown on the detail panel, and both
+are explicitly labelled as *not included in the costed figures*.
+
+They are not costed because published fee amounts are GST inclusive while unit prices are GST
+exclusive. Folding them into the engine mixes two tax bases, and getting that subtly wrong is
+worse than stating plainly that they are excluded.
+
+Showing rates while silently omitting a ten-dollar monthly membership fee would mislead precisely
+where you had gone looking for detail. So they are shown, and the exclusion is stated.
+
+== Comparing a few of them
+
+Ticking two to four plans and pressing *Compare selected* opens
+xref:comparing-plans.adoc[the comparison screen], which attributes the difference between them to
+named charge components and says whether the ranking would survive a change in your consumption.
+
+== Plans defined as files
+
+A plan you have written yourself is marked *from a file*. The distinction matters: where a local
+file and a harvested plan share an identifier, the local file wins, because it is usually the
+tariff you are actually on and may no longer be published.
+
+== The date window follows you
+
+The window you select is carried on every link. Move between the dashboard and the browser and you
+are still looking at the same period; reload, and it survives; copy the URL, and it describes
+exactly what you were looking at.
+
+== Empty results
+
+A set of criteria matching nothing never renders a blank table. The screen names every criterion
+in force and offers to clear them.
+
+If nothing has been defined *and* nothing harvested, it says so and points at the harvest control
+instead — see xref:market-plans.adoc[Market plans].

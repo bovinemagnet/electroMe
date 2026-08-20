@@ -1,0 +1,183 @@
+{#include base}
+{#body}
+
+<form id="controls" action="/what-if" method="get">
+  <label>From
+    <input type="date" name="from" value="{shell.window.from}"
+           min="{shell.available.from}" max="{shell.available.to}">
+  </label>
+  <label>To
+    <input type="date" name="to" value="{shell.window.to}"
+           min="{shell.available.from}" max="{shell.available.to}">
+  </label>
+
+  <label>Appliance
+    <select name="appliance">
+      {#for option in presets}
+      <option value="{option.id}" {#if option.id == preset.id}selected{/if}>{option.name}</option>
+      {/for}
+    </select>
+  </label>
+
+  {#if preset.id == 'ev'}
+  <label>Kilometres a week
+    <input type="number" name="km" value="{kmPerWeek}" min="0" step="10">
+  </label>
+  <label>kWh per 100 km
+    <input type="number" name="kwh100" value="{kWhPerHundredKm}" min="1" step="0.5">
+  </label>
+  {#else}
+  <label>kWh per run
+    <input type="number" name="energy" value="{energyPerRunKWh}" min="0" step="0.5">
+  </label>
+  {/if}
+
+  <label>Charger kW
+    <input type="number" name="power" value="{powerKW}" min="0.1" step="0.1">
+  </label>
+
+  {#if !preset.shaped}
+  <label>Available from
+    <input type="time" name="available" value="{availableFrom}">
+  </label>
+  <label>Needed by
+    <input type="time" name="by" value="{deadline}">
+  </label>
+  <label>Days a week
+    <input type="number" name="days" value="{runsPerWeek}" min="0" max="7">
+  </label>
+  {/if}
+
+  <button type="submit" class="primary">Work it out</button>
+</form>
+
+<p class="explain">{preset.explanation}</p>
+
+{#if !outcome.fits}
+<section class="notice error">
+  <h2>That will not fit in the time available</h2>
+  <p class="explain" style="margin:0">
+    The window is {money:kWh(outcome.shortfallKWh)} short of what you asked for. Charging at this
+    power would finish at {outcome.workableDeadline} &mdash; extend the deadline to there, raise
+    the charger's power, or ask for less energy. Nothing is costed until it does fit, because a
+    price for energy never delivered would be worse than this message.
+  </p>
+</section>
+
+{#else if outcome.perPlan.size == 0}
+<section class="panel">
+  <h2 style="margin-top:0; font-size:16px">No plans to test this against</h2>
+  <p class="explain" style="margin:0">
+    Add a plan file, or fetch the published market plans from the dashboard.
+  </p>
+</section>
+
+{#else}
+
+{#let best=outcome.recommended()}
+{!
+  The answer first: what it costs, when to run it, and whether owning it changes the plan.
+!}
+<section class="panel verdict">
+  <div>
+    <p class="eyebrow" style="margin-bottom:9px">{outcome.load.label()}, a year</p>
+    <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap">
+      <span class="num figure">{money:dollars(best.annualApplianceCost())}</span>
+      <span style="font-size:15px; color:var(--muted)">on {best.plan.name()}</span>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div class="lede">
+    {#if best.timingMatters}
+    <span class="badge">Run it {best.schedule.describe()}</span>
+    <span style="font-size:13.5px; color:var(--muted); line-height:1.5">
+      Starting at {best.plan.name()}'s cheapest half hours rather than
+      {best.naiveDescription} saves {money:dollars(best.savingFromTiming())} a year.
+    </span>
+    {#else}
+    <span class="badge">Timing makes no difference on this plan</span>
+    <span style="font-size:13.5px; color:var(--muted); line-height:1.5">
+      Every half hour costs the same, so there is no run time to recommend and nothing a timer
+      would save.
+    </span>
+    {/if}
+  </div>
+</section>
+
+{#if outcome.bestPlanChanged()}
+<section class="notice warning">
+  <h2>This changes which plan you should be on</h2>
+  <p class="explain" style="margin:0">
+    On your consumption today <strong>{outcome.bestPlanBefore().name()}</strong> is cheapest.
+    With {outcome.load.label()} added and run at the best time for each plan,
+    <strong>{outcome.bestPlanAfter().name()}</strong> wins instead &mdash; because the new load
+    lands almost entirely in one window, which makes that window's rate worth far more than it
+    is today.
+  </p>
+</section>
+{/if}
+
+{#if !best.exact()}
+<section class="notice warning">
+  <h2>About the recommended time on this plan</h2>
+  <p class="explain" style="margin:0">{best.inexactBecause}</p>
+</section>
+{/if}
+{/let}
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">Every plan, with the appliance added</p>
+  <p class="explain">
+    Each plan is scheduled at <em>its own</em> cheapest half hours, then costed in full. A shared
+    schedule would understate every plan whose cheap window sits somewhere else, which is exactly
+    the effect being measured.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>Plan</th><th>Run it</th>
+          <th class="right">Now</th><th class="right">With it</th>
+          <th class="right">The appliance</th><th class="right">Timer saves</th>
+        </tr>
+      </thead>
+      <tbody>
+      {#for row in outcome.perPlan}
+        <tr class="{#if row.plan.id() == outcome.bestPlanAfter().id()}cheapest{/if}">
+          <td>
+            <div class="plan-name">{row.plan.name()}{#if row.plan.id() == outcome.bestPlanAfter().id()}<span class="best-tag">BEST</span>{/if}</div>
+            <div class="plan-sub">{row.plan.retailer()}{#if !row.exact()}<span class="conditional" title="{row.inexactBecause}">estimate</span>{/if}</div>
+          </td>
+          <td class="plan-sub">{#if row.timingMatters}{row.schedule.describe()}{#else}any time{/if}</td>
+          <td class="right num">{money:dollars(row.totalWithout)}</td>
+          <td class="right num">{money:dollars(row.totalWith)}</td>
+          <td class="right num" style="font-weight:600">{money:dollars(row.annualApplianceCost())}</td>
+          <td class="right num" style="color:var(--muted)">{money:dollars(row.savingFromTiming())}</td>
+        </tr>
+      {/for}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">What this assumes</p>
+  <ul class="plain">
+    <li>Runs are spread evenly across the week. Nobody drives to a schedule, so treat a
+      five-nights-a-week figure as an average rather than a plan.</li>
+    <li>The appliance runs at full power until it is done, which is what a timer or a charging
+      app actually does &mdash; not a continuous optimum nobody achieves.</li>
+    {#if preset.shaped}
+    <li>Your data already contains some cooling, so this models using <em>more</em> air
+      conditioning rather than adding it from nothing.</li>
+    {/if}
+    <li>The time chosen comes from each plan's rates half hour by half hour; the cost shown
+      comes from costing the whole year again with the appliance in it, so the figure is exact
+      even where the chosen time is only close.</li>
+  </ul>
+</section>
+
+{/if}
+
+{/body}
+{/include}

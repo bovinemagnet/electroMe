@@ -1,0 +1,14 @@
+# The mirror image: dearer to be connected, kinder in the evening.
+id: kind-evenings
+name: Kind Evenings
+retailer: Beta Power
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 140
+  - type: timeOfUse
+    bands:
+      - { from: "00:00", to: "16:00", days: ALL, cents: 24 }
+      - { from: "16:00", to: "21:00", days: ALL, cents: 34 }
+      - { from: "21:00", to: "24:00", days: ALL, cents: 24 }

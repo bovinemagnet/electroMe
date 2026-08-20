@@ -152,6 +152,70 @@ public final class CdrPlanMapper {
     }
 
     /**
+     * Fees and incentives, for display beside the plan.
+     *
+     * <p>Read separately from the tariff and never costed. A detail view that shows rates while
+     * silently omitting a monthly membership fee would mislead precisely where a reader has gone
+     * looking for detail, so they are captured; but {@code fees[].amount} is published GST
+     * inclusive while {@code unitPrice} is exclusive, so folding them into the engine mixes two
+     * tax bases and is a separate decision.
+     *
+     * <p>An unreadable response yields no extras rather than an error: this block is optional
+     * decoration, and the detail panel must still render without it.
+     */
+    public static PlanExtras extrasOf(String detailJson) {
+        JsonNode contract;
+        try {
+            contract = MAPPER.readTree(detailJson).path("data").path("electricityContract");
+        } catch (IOException e) {
+            return PlanExtras.none();
+        }
+
+        var fees = new ArrayList<PlanFee>();
+        for (JsonNode entry : contract.path("fees")) {
+            BigDecimal amount = decimalOrNull(entry.path("amount"));
+            BigDecimal rate = decimalOrNull(entry.path("rate"));
+            // A fee stating neither an amount nor a rate says nothing a reader can act on.
+            if (amount == null && rate == null) {
+                continue;
+            }
+            fees.add(new PlanFee(
+                    entry.path("type").asText("OTHER"),
+                    entry.path("term").asText(""),
+                    rate == null ? amount : null,
+                    rate,
+                    entry.path("description").asText("").trim()));
+        }
+
+        var incentives = new ArrayList<PlanIncentive>();
+        for (JsonNode entry : contract.path("incentives")) {
+            incentives.add(new PlanIncentive(
+                    entry.path("displayName").asText("").trim(),
+                    entry.path("category").asText("OTHER"),
+                    entry.path("description").asText("").trim(),
+                    entry.path("eligibility").asText("").trim()));
+        }
+
+        return new PlanExtras(fees, incentives);
+    }
+
+    /** Absent, null or unparseable all mean "not stated", which is not an error here. */
+    private static BigDecimal decimalOrNull(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
+            return null;
+        }
+        String text = node.asText("").trim();
+        if (text.isEmpty()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
      * Time-of-use bands.
      *
      * <p>The {@code type} field is never read. Real Victorian plans label a 51.7c evening peak

@@ -34,6 +34,8 @@ public class MarketPlanSource {
 
     private volatile List<Plan> plans = List.of();
     private volatile java.util.Map<String, List<String>> conditions = java.util.Map.of();
+    private volatile java.util.Map<String, io.github.bovinemagnet.electrome.market.cdr.PlanExtras>
+            extras = java.util.Map.of();
     private volatile HarvestReport report;
     private volatile String harvestError;
 
@@ -64,6 +66,16 @@ public class MarketPlanSource {
         return conditions;
     }
 
+    /**
+     * Fees and incentives by plan id, for the plans that publish any.
+     *
+     * <p>Display only, and deliberately not costed: published fee amounts are GST inclusive
+     * while unit prices are exclusive.
+     */
+    public java.util.Map<String, io.github.bovinemagnet.electrome.market.cdr.PlanExtras> extras() {
+        return extras;
+    }
+
     public Optional<String> harvestError() {
         return Optional.ofNullable(harvestError);
     }
@@ -83,6 +95,7 @@ public class MarketPlanSource {
             var result = harvester.harvest(DistributionZone.valueOf(zoneName));
             plans = result.plans();
             conditions = result.conditions();
+            extras = result.extras();
             report = result.report();
             harvestError = null;
         } catch (RuntimeException e) {

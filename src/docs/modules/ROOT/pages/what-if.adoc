@@ -4,6 +4,135 @@
 The comparison answers "which plan suits how I use power now". This panel answers the more useful
 question: *what would change the answer?*
 
+== Two different questions
+
+This page covers two things that look similar and are not:
+
+*Scenarios* rearrange energy you already use — shifting load, adding solar, adding a battery.
+They are on the dashboard.
+
+*Appliances* add load that is not in your data at all, and come with a second question: when
+should it run? That is the xref:what-if.adoc#appliances[appliance screen] at `/what-if`.
+
+[#appliances]
+== Adding an appliance
+
+An electric vehicle, a pool pump, a hot water service, more air conditioning. Pick one, adjust the
+figures, and the screen answers three questions: what it would cost a year, when to run it, and
+whether owning it changes which plan you should be on.
+
+The third is the interesting one. Adding eleven kilowatt hours a night to a household whose tariff
+prices midnight to six at 4.99c is not a uniform increase — it lands almost entirely in the
+cheapest window, which makes that window's rate worth far more than it is today. A plan that loses
+on your current consumption can win comfortably once there is a car in the household.
+
+=== Presets, in units you already know
+
+Nobody knows their pool pump's draw, so every appliance arrives with real defaults and every field
+stays editable.
+
+The electric vehicle is described the way a driver thinks: *kilometres a week* and *kilowatt hours
+per hundred kilometres*. You know your weekly mileage; you do not know your nightly
+kilowatt-hours, so the conversion happens for you.
+
+=== Two kinds of load
+
+*Schedulable* — a block of energy that must fit inside a window. You say how much and by when; the
+software says at what time. An electric vehicle, a pool pump, hot water.
+
+A charger can pause and resume, so it takes the cheapest half hours wherever they fall. A pool
+pump cannot, so it takes the cheapest unbroken stretch. Windows that run past midnight are normal
+and are handled as such.
+
+*Shaped* — weather-driven load whose timing is not a choice. Air conditioning. There is no run
+time to recommend, because you cool the house when it is hot, and offering one would be advice
+nobody can take.
+
+=== When should it run
+
+The recommendation is a specific clock time with a cost attached, and the cost of the obvious
+alternative — plugging in and charging straight away — beside it. The gap between the two is what
+setting a timer is worth.
+
+Every plan gets *its own* schedule. Sharing one would understate every plan whose cheap window
+sits somewhere else, which is precisely the effect being measured.
+
+Where a plan has no time structure at all — a flat rate, or a pure block tariff — the screen says
+*timing makes no difference on this plan* rather than reporting an arbitrary half hour as though
+it had been chosen.
+
+[#scheduling-method]
+=== How the time is chosen, and where that is exact
+
+The cost of adding a kilowatt hour in a given half hour is simply the tariff's rate in that half
+hour. So finding the best time is a scan over forty-eight numbers rather than forty-eight
+re-costings of the whole year — which is what makes optimising against every plan at once
+affordable.
+
+That shortcut is exact for flat and time-of-use tariffs. It is not exact for:
+
+* *Block tariffs*, where what a unit costs depends on how much you have already used in the
+  period.
+* *Demand charges*, where added load costs nothing or a great deal depending on whether it lifts
+  your monthly peak.
+
+So the discipline is: **choose the time by marginal rate, then cost that schedule in full**. The
+cost shown is always exact. Only the chosen time can be slightly off, and only on those two kinds
+of plan — which say so, on themselves, rather than the whole screen carrying a disclaimer it does
+not need.
+
+=== Solar changes the answer
+
+If you already export at midday, the cost of consuming then is not the import rate — it is the
+feed-in rate you forgo, typically a few cents against forty or fifty.
+
+So the recommendation moves from overnight to the middle of the day on its own once there is solar
+in your data. That is why "charge at midday" is right for a solar household and wrong without one.
+
+It moves only if the appliance is *available* then. A car plugged in from 18:00 to 07:00 is at
+work at midday, and the window constrains the choice before the rates do.
+
+=== If it will not fit
+
+Eleven kilowatt hours at two kilowatts needs five and a half hours. A four-hour window cannot
+deliver it, and the screen says so — naming the shortfall and the earliest deadline that would
+work — rather than quietly charging a shorter session. A price for energy never delivered would be
+worse than the message.
+
+[#controlled-load]
+=== Hot water and the controlled circuit
+
+Victorian households commonly have hot water on a *separate controlled circuit* with its own,
+cheaper tariff. The retailer energises it for a stated window and prices what it draws well below
+the ordinary rate.
+
+Pricing that energy as ordinary consumption would misprice it by the whole gap between two
+tariffs, so it is modelled properly: a `controlledLoad` charge on a plan, and a third series
+alongside consumption and export in your data. Your interval file is read for it automatically —
+retailers label the register inconsistently, so the match is on wording rather than an agreed
+code.
+
+Two consequences worth knowing:
+
+* A plan that offers *no* controlled rate still charges for that energy, at its ordinary rate.
+  Leaving it unpriced would make every such plan look artificially cheap.
+* Energy falling outside the energised window is likewise priced as ordinary consumption, because
+  that is what the retailer does.
+
+[#appliance-assumptions]
+=== What the appliance figures assume
+
+* *Runs are spread evenly across the week.* Five charges land on five of every seven days. Nobody
+  drives to a schedule, so treat it as an average rather than a plan.
+* *The appliance runs at full power until it is done*, which is what a timer or a charging app
+  actually does — not a continuous optimum nobody achieves. This is the same discipline as the
+  battery controller.
+* *Air conditioning is an increment.* Your consumption is already strongly summer-peaked, so some
+  cooling is present in the data. The preset models using *more*, not adding it from nothing.
+* *A demand tariff is sensitive to the schedule.* The costing is exact, but adding a car to a
+  demand plan can lift your monthly peak sharply, and the cost then depends heavily on when it
+  runs. The plan is marked as an estimate for that reason.
+
 == How a scenario is scored
 
 Each scenario transforms your consumption, then re-costs the result *against every plan you have

@@ -1,0 +1,83 @@
+<section class="panel detail">
+  <p class="eyebrow" style="margin-bottom:4px">{detail.plan().name()}</p>
+  <p class="explain">
+    {detail.plan().retailer()} &middot; {detail.plan().zone()}
+    {#if detail.local}<span class="source-tag" title="Defined in your plans directory. A local file wins over a harvested plan of the same identifier.">from a file</span>{/if}
+  </p>
+
+  <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:10px">
+    <span class="num figure">{money:dollars(detail.bill().totalRounded())}</span>
+    <span style="font-size:15px; color:var(--muted)">
+      over {detail.range.days()} days to {detail.range.to}
+    </span>
+  </div>
+
+  {#if detail.conditional()}
+  <div class="notice warning" style="margin:10px 0">
+    <h2 style="font-size:14px; margin-top:0">You must qualify for this plan</h2>
+    <ul>{#for condition in detail.conditions}<li>{condition}</li>{/for}</ul>
+  </div>
+  {/if}
+
+  {!
+    The tariff drawn on a 24-hour axis, so its shape is visible rather than inferred from a
+    list of numbers. A plan that prices weekdays and weekends differently gets a strip each.
+  !}
+  {#for strip in detail.strips}
+  <p class="eyebrow" style="margin-bottom:4px">{strip.label}</p>
+  <div class="tariff-strip">
+    {#for segment in strip.segments}
+    <span style="width:{segment.widthPercent}%; background:{segment.colour}"
+          title="{segment.window}: {money:cents(segment.centsPerKWh)}/kWh">
+      <em>{segment.window}</em><b>{money:cents(segment.centsPerKWh)}</b>
+    </span>
+    {/for}
+  </div>
+  {/for}
+
+  <div class="two-up" style="margin-top:12px">
+    <div>
+      <p class="eyebrow" style="margin-bottom:4px">Charges</p>
+      <ul class="plain">
+        {#if detail.supplyCentsPerDay}
+        <li>Daily supply &mdash; {money:cents(detail.supplyCentsPerDay)}/day</li>
+        {/if}
+        {#for component in detail.components}<li>{component}</li>{/for}
+      </ul>
+    </div>
+
+    <div>
+      <p class="eyebrow" style="margin-bottom:4px">This bill, line by line</p>
+      <table class="lines">
+        <tbody>
+        {#for line in detail.lines()}
+          <tr>
+            <td>{line.label}</td>
+            <td class="right num">{money:dollars(line.cost)}</td>
+          </tr>
+        {/for}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {!
+    Fees and incentives are published by the retailer and read straight through. They are not
+    costed: fee amounts are published GST inclusive while unit prices are exclusive, so folding
+    them into the engine mixes two tax bases. Saying so is the whole point of showing them.
+  !}
+  <p class="eyebrow" style="margin-bottom:4px; margin-top:14px">Fees and incentives</p>
+  {#if detail.hasExtras()}
+  <ul class="plain">
+    {#for fee in detail.fees}
+    <li><b>{fee.describe()}</b> &mdash; {fee.type} {#if fee.description}<span class="explain">{fee.description}</span>{/if}</li>
+    {/for}
+    {#for incentive in detail.incentives}
+    <li><b>{incentive.displayName}</b> {#if incentive.eligibility}<span class="explain">{incentive.eligibility}</span>{/if}</li>
+    {/for}
+  </ul>
+  {#else}
+  <p class="explain" style="margin:0">Nothing published for this plan.</p>
+  {/if}
+  <p class="explain" style="margin:6px 0 0">{detail.excludedNote()}</p>
+</section>

@@ -32,7 +32,20 @@ Average draw at the daily peak::
 Your highest average power draw across the day, and when it occurs. This is the figure a demand
 tariff would price.
 
-== What each plan would have cost
+== Your shortlist
+
+Once you harvest the market there are a couple of hundred tariffs, and ranking all of them here
+would bury the answer you came for. This panel therefore shows a handful:
+
+* your own tariff, and any other plan you have defined as a file
+* the cheapest plan anyone can sign up to
+* the cheapest plan that exists at all, with its requirement named beside it
+* the regulated benchmark
+
+The rest are not discarded — *Compare all plans* opens
+xref:browsing-plans.adoc[the plan browser], which is built for looking through them. To see why
+one plan beats another rather than only that it does, put them side by side in
+xref:comparing-plans.adoc[the comparison screen].
 
 Each row is one tariff, cheapest first. The bar is the bill broken into its charge components and
 scaled so that rows share one axis — so you are comparing like with like across plans, not just
@@ -53,6 +66,10 @@ The daytime window keeps its amber whether or not it happens to be the cheapest 
 particular plan, so the same window is recognisable across tariffs.
 
 *Above cheapest* is what a plan costs you over the winner — the figure to act on.
+
+A plan marked *requirements* is only offered to households that own or join something. Check you
+qualify before treating its saving as available; see
+xref:browsing-plans.adoc#requirements[why those plans are handled separately].
 
 == When you use electricity, and what it costs
 

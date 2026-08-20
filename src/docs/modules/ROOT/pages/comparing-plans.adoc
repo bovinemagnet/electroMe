@@ -1,0 +1,121 @@
+= Comparing plans
+:description: Side by side comparison of two to four tariffs, and whether the answer would survive a change in consumption.
+
+A ranking tells you which plan wins on the consumption you had. It does not tell you *why*, and
+it does not tell you how fragile the answer is.
+
+That second point matters more than it looks. Two plans $40 a year apart may be separated by the
+daily supply charge alone, in which case the ranking flips the moment you use less. You are
+choosing a contract for the next year, not pricing the last one.
+
+== Getting there
+
+Tick two to four plans in xref:browsing-plans.adoc[the plan browser] and press *Compare
+selected*, or go straight to a URL:
+
+----
+/compare?plans=current-tou,vdo-ausnet-2026-27&from=2025-07-01&to=2026-06-30
+----
+
+The identifiers are the plan `id` values. A comparison is therefore linkable and reproducible —
+the URL fully describes it, and nothing is held in a session.
+
+Two is the minimum, because below that there is nothing to compare. Four is the maximum, because
+beyond that the columns stop being readable and the browser is the better tool. Ask for more and
+the first four are compared and the rest named.
+
+== The sentence
+
+The screen leads with one sentence per losing plan:
+
+[quote]
+____
+Current tariff is $40.85 cheaper than Victorian Default Offer 2026-27 over this window: $266.37
+of that is its lower shoulder, offset by $125.89 more on middle of day, and $72.56 more on
+overnight / off-peak, less $27.07 across smaller differences.
+____
+
+That sentence is the deliverable. Everything below it on the screen is evidence for it, and a
+reader who stops there has not missed anything they needed.
+
+The figures reconcile. Only the three largest reasons are named — more than that stops being a
+sentence — so whatever they do not account for is stated as a remainder rather than left for you
+to discover by adding them up.
+
+== How fragile the answer is
+
+Under each sentence sits the part a ranking cannot give: whether the winner would still win if
+you used more or less.
+
+There are two possible findings.
+
+*One plan wins at every level of use.* The common case, and a stronger result than any number.
+It happens whenever one tariff is cheaper on both the standing charge and the rates, so no
+amount of consuming more or less can change the order.
+
+*The two swap places at about N kWh a year.* Reported as an annual consumption with your own
+usage beside it — "these two swap places at about 8,111 kWh a year, and you used 8,760 kWh over a
+comparable period" — because a scale factor means nothing without a reference point. Where your
+consumption sits close to the crossing, the figure is highlighted: that is a marginal answer, and
+worth knowing before you sign.
+
+[#method]
+=== How the crossover is worked out
+
+Your consumption is scaled by a factor and both plans re-costed at each level.
+
+For most tariffs a bill is `standing charge + k x usage`, so the difference between two plans is a
+straight line in the scale factor and the crossing has a closed form. That is exact and free, so
+it is used wherever it holds — which is flat and time-of-use tariffs, most of the market.
+
+It does not hold for block tariffs, whose thresholds reset per period and do not scale; for demand
+charges; or for discounts scoped to part of the bill. For any plan carrying one of those, the
+closed form is abandoned and the crossing is found by bisection over full re-costings instead. The
+two methods are checked against each other on tariffs where both apply.
+
+WARNING: Both methods scale your consumption *evenly across every half hour*. Real households add
+load in particular windows — an electric vehicle charging overnight, a heat pump in the evening —
+and a time-of-use tariff prices those differently. Treat the crossover as a guide to how close two
+plans are, not as a threshold to plan around.
+
+== The matrix
+
+One row per charge component, one column per plan, using every component any selected plan has.
+
+Rows are components rather than plans because the useful reading is *horizontal*: this plan wins
+on supply, that one on the evening peak. The marked cell in each row is the cheapest among the
+plans that carry it — and nothing is marked where only one plan has the component, since
+"cheapest" among one is not a comparison.
+
+A dash means the plan has no such charge. That is an absence rather than a gap, and it is
+information: a flat-rate plan genuinely has no evening rate.
+
+Components use the same vocabulary and the same colours as the rest of the site — overnight,
+middle of day, shoulder, evening peak — rather than each plan's own band labels. Two plans whose
+evening windows start an hour apart still belong on one row, which is exactly the comparison you
+came to make.
+
+== The shape chart
+
+Each plan's rate through the day on the left axis, your average draw on the right.
+
+This is the dashboard's load-curve insight extended to several plans at once. Where a plan's cheap
+window sits under the high part of your curve is where it saves you money — and that overlap,
+rather than the advertised rate, is why two households on one tariff pay different effective
+rates.
+
+The two axes are deliberately separate. Rates and power draw share an x-axis and nothing else;
+plotting them on one scale would make the comparison meaningless.
+
+== When the selection is not quite right
+
+* *An unknown identifier among several.* The rest are compared and the unknown one named.
+  Silently dropping it would let you compare three plans believing you compared four.
+* *More than four.* The first four are compared and the surplus named.
+* *Fewer than two.* The screen explains and offers the browser, rather than rendering a
+  one-column matrix that compares nothing.
+
+== See also
+
+* xref:browsing-plans.adoc[Browsing plans] — finding the plans to compare.
+* xref:reading-the-dashboard.adoc[Reading the dashboard] — the same evidence for one plan.

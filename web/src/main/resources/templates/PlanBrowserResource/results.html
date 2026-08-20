@@ -1,0 +1,101 @@
+{#if page.noPlansAtAll()}
+<section class="panel">
+  <h2 style="margin-top:0; font-size:16px">No plans to browse</h2>
+  <p class="explain" style="margin:0">
+    Nothing is defined and nothing has been harvested. Add a YAML file to the plans directory,
+    or fetch the published market plans from the dashboard.
+  </p>
+</section>
+
+{#else if page.empty()}
+<section class="panel">
+  <h2 style="margin-top:0; font-size:16px">No plans match</h2>
+  <p class="explain">
+    {page.total} plans were costed. None of them met every criterion in force:
+  </p>
+  <ul class="criteria-list">
+    {#for criterion in page.query.activeCriteria()}<li>{criterion}</li>{/for}
+  </ul>
+  <p style="margin:0">
+    <a class="button" href="{shell.link('/plans')}">Clear all criteria</a>
+  </p>
+</section>
+
+{#else}
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">What each plan would have cost</p>
+  <p class="explain">
+    Your actual half-hourly consumption, priced by each tariff over
+    {shell.window.days()} days to {shell.window.to}. Open a plan to see its bands, its rates and
+    anything it requires of you.
+  </p>
+
+  <p class="counts">
+    Showing {page.results.size} of {page.matched} matching{#if page.total != page.matched},
+    from {page.total} costed{/if}.
+    {#if page.hiddenByRequirements != 0}
+    <span class="conditional-note">
+      {page.hiddenByRequirements} hidden because they need equipment or a membership.
+      <a href="{shell.link('/plans?requirements=ANY')}">Show them</a>
+    </span>
+    {/if}
+    {#if page.truncated()}
+    <span class="truncation-note">
+      Limited to {page.results.size}; <a href="{shell.link('/plans?limit=all')}">show all
+      {page.matched}</a>.
+    </span>
+    {/if}
+  </p>
+
+  {!
+    A plain GET form, so a selection produces a URL that fully describes the comparison. It sits
+    outside the criteria form because HTML does not nest forms.
+  !}
+  <form class="select-plans" action="/compare" method="get">
+  <input type="hidden" name="from" value="{shell.window.from}">
+  <input type="hidden" name="to" value="{shell.window.to}">
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th class="pick"><span class="sr-only">Compare</span></th>
+          <th>Plan</th><th>Retailer</th><th>Shape</th>
+          <th class="right">Total</th><th class="right">vs best</th><th class="right">Avg rate</th>
+        </tr>
+      </thead>
+      <tbody>
+      {#for row in page.results}
+        <tr class="{#if row.cheapest}cheapest{/if}">
+          <td class="pick">
+            <input type="checkbox" name="plans" value="{row.bill().plan().id()}"
+                   aria-label="Compare {row.planName()}">
+          </td>
+          <td>
+            <a class="plan-name" href="{shell.link('/plans/' + row.bill().plan().id())}"
+               hx-get="/fragments/browser/{row.bill().plan().id()}?{shell.windowQuery()}"
+               hx-target="#detail"
+               hx-swap="innerHTML">{row.planName()}</a>{#if row.cheapest}<span class="best-tag">BEST</span>{/if}
+          </td>
+          <td class="plan-sub">{row.retailer()}</td>
+          <td class="plan-sub">{row.bill().plan().charges().size()} components</td>
+          <td class="right num" style="font-size:17px; font-weight:600">{money:dollars(row.total())}</td>
+          <td class="right num" style="font-size:13.5px; color:{#if row.cheapest}var(--muted){#else}var(--peak){/if}">
+            {#if row.cheapest}&mdash;{#else}+{money:dollars(row.differenceFromBest())}{/if}
+          </td>
+          <td class="right num" style="font-size:13.5px; color:var(--muted)">{money:cents(row.bill().averageCentsPerKWh())}</td>
+        </tr>
+      {/for}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="compare-action">
+    <button type="submit" class="primary">Compare selected</button>
+    <span class="explain" style="display:inline; margin-left:10px">
+      Tick two to four plans to see, component by component, what separates them.
+    </span>
+  </p>
+  </form>
+</section>
+{/if}

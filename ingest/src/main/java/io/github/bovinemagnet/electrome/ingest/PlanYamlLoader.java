@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.github.bovinemagnet.electrome.core.tariff.Band;
 import io.github.bovinemagnet.electrome.core.tariff.Charge;
+import io.github.bovinemagnet.electrome.core.tariff.ControlledLoad;
 import io.github.bovinemagnet.electrome.core.tariff.DailySupply;
 import io.github.bovinemagnet.electrome.core.tariff.DaySelector;
 import io.github.bovinemagnet.electrome.core.tariff.Demand;
@@ -109,6 +110,7 @@ public final class PlanYamlLoader {
             case "flatRate" -> new FlatRate(rate(node, "cents", inclusive));
             case "timeOfUse" -> timeOfUse(planId, node, inclusive);
             case "tiered" -> tiered(planId, node, inclusive);
+            case "controlledLoad" -> controlledLoad(planId, node, inclusive);
             case "demand" -> demand(node, inclusive);
             case "solarFeedIn" -> new SolarFeedIn(rate(node, "cents", inclusive));
             case "discount" -> discount(node);
@@ -131,6 +133,35 @@ public final class PlanYamlLoader {
                     rate(band, "cents", inclusive)));
         }
         return new TimeOfUse(bands);
+    }
+
+    /**
+     * A separate rate for the controlled circuit, with an optional energised window.
+     *
+     * <p>Stating neither {@code from} nor {@code to} means the circuit is energised all day,
+     * which is how a plan that publishes no window behaves.
+     */
+    private static ControlledLoad controlledLoad(
+            String planId, JsonNode node, boolean inclusive) {
+        var from = node.get("from");
+        var to = node.get("to");
+        if ((from == null || from.isNull()) != (to == null || to.isNull())) {
+            throw new IllegalArgumentException("Plan " + planId
+                    + " controlledLoad needs both from and to, or neither");
+        }
+        var cents = rate(node, "cents", inclusive);
+        if (from == null || from.isNull()) {
+            return ControlledLoad.anyTime(cents);
+        }
+        return new ControlledLoad(cents,
+                Band.parseMinuteOfDay(from.asText()),
+                endMinuteOfDay(to.asText()));
+    }
+
+    /** "00:00" as an end time means the end of the day, as it does for a band. */
+    private static int endMinuteOfDay(String clockTime) {
+        int minute = Band.parseMinuteOfDay(clockTime);
+        return minute == 0 ? Band.MINUTES_PER_DAY : minute;
     }
 
     private static Tiered tiered(String planId, JsonNode node, boolean inclusive) {

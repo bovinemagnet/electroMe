@@ -35,6 +35,17 @@ public final class UsageCsvReader {
             .appendPattern("dd/MM/yyyy hh:mm:ss a")
             .toFormatter(Locale.ENGLISH);
 
+    /**
+     * Register descriptions that mean a separate controlled circuit.
+     *
+     * <p>Retailers label it inconsistently — "Controlled load", "Off peak", "Dedicated circuit"
+     * — so the match is on wording rather than on an agreed code.
+     */
+    private static final java.util.regex.Pattern CONTROLLED_REGISTER =
+            java.util.regex.Pattern.compile(
+                    "controlled|dedicated circuit|off.?peak (?:hot ?water|circuit)|hot ?water",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+
     private static final List<String> REQUIRED_COLUMNS = List.of(
             "RateTypeDescription", "StartDate", "EndDate", "ProfileReadValue", "QualityFlag");
 
@@ -57,6 +68,7 @@ public final class UsageCsvReader {
 
         var consumption = new ArrayList<IntervalReading>();
         var export = new ArrayList<IntervalReading>();
+        var controlled = new ArrayList<IntervalReading>();
         var qualityCounts = new EnumMap<Quality, Integer>(Quality.class);
         var intervalsPerDay = new TreeMap<LocalDate, Integer>();
         var dailyTotals = new TreeMap<LocalDate, BigDecimal>();
@@ -88,8 +100,15 @@ public final class UsageCsvReader {
 
             var reading = new IntervalReading(start, normaliseLength(start, rawEnd), kWh, quality);
 
-            if (rateType.toLowerCase(Locale.ROOT).contains("export")) {
+            String register = rateType.toLowerCase(Locale.ROOT);
+            if (register.contains("export")) {
                 export.add(reading);
+            } else if (CONTROLLED_REGISTER.matcher(register).find()) {
+                // A separate circuit with its own, cheaper tariff. Counting it as ordinary
+                // consumption would misprice it by the gap between two tariffs.
+                controlled.add(reading);
+                qualityCounts.merge(quality, 1, Integer::sum);
+                continue;
             } else {
                 consumption.add(reading);
                 intervalsPerDay.merge(reading.date(), 1, Integer::sum);
@@ -103,7 +122,7 @@ public final class UsageCsvReader {
 
         var report = new DataQualityReport(
                 rowsRead,
-                consumption.size() + export.size(),
+                consumption.size() + export.size() + controlled.size(),
                 qualityCounts,
                 intervalsPerDay,
                 daysWithCountOtherThanUsual(intervalsPerDay, true),
@@ -113,7 +132,9 @@ public final class UsageCsvReader {
                 rateTypes);
 
         return new UsageImport(
-                new UsageData(UsageSeries.of(consumption), UsageSeries.of(export)), report);
+                new UsageData(UsageSeries.of(consumption), UsageSeries.of(export),
+                        UsageSeries.of(controlled)),
+                report);
     }
 
     /**

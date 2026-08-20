@@ -1,0 +1,83 @@
+{#include base}
+{#body}
+
+{!
+  Criteria travel in the query string, so this form is a plain GET: submitting it produces a URL
+  that completely describes what is on screen, and the back button works.
+!}
+<form id="criteria" class="criteria"
+      hx-get="/fragments/browser"
+      hx-target="#results"
+      hx-trigger="change, submit"
+      hx-swap="innerHTML"
+      hx-indicator="#busy">
+
+  <label>From
+    <input type="date" name="from" value="{shell.window.from}"
+           min="{shell.available.from}" max="{shell.available.to}">
+  </label>
+  <label>To
+    <input type="date" name="to" value="{shell.window.to}"
+           min="{shell.available.from}" max="{shell.available.to}">
+  </label>
+
+  <label>Search
+    <input type="search" name="search" value="{page.query.search}"
+           placeholder="Plan or retailer">
+  </label>
+
+  <label>Requirements
+    <select name="requirements">
+      <option value="OPEN_ONLY" {#if page.query.requirements.name == 'OPEN_ONLY'}selected{/if}>Anyone can sign up</option>
+      <option value="ANY" {#if page.query.requirements.name == 'ANY'}selected{/if}>All plans</option>
+      <option value="REQUIREMENTS_ONLY" {#if page.query.requirements.name == 'REQUIREMENTS_ONLY'}selected{/if}>Only plans with requirements</option>
+    </select>
+  </label>
+
+  <label>Shape
+    <select name="shape">
+      <option value="ANY" {#if page.query.shape.name == 'ANY'}selected{/if}>Any shape</option>
+      <option value="FLAT" {#if page.query.shape.name == 'FLAT'}selected{/if}>Flat rate</option>
+      <option value="TIME_OF_USE" {#if page.query.shape.name == 'TIME_OF_USE'}selected{/if}>Time of use</option>
+      <option value="BLOCK" {#if page.query.shape.name == 'BLOCK'}selected{/if}>Block</option>
+      <option value="DEMAND" {#if page.query.shape.name == 'DEMAND'}selected{/if}>Demand</option>
+    </select>
+  </label>
+
+  <label>Sort by
+    <select name="sort">
+      <option value="TOTAL" {#if page.query.sort.name == 'TOTAL'}selected{/if}>What it would cost</option>
+      <option value="PEAK_RATE" {#if page.query.sort.name == 'PEAK_RATE'}selected{/if}>Peak rate</option>
+      <option value="SUPPLY_CHARGE" {#if page.query.sort.name == 'SUPPLY_CHARGE'}selected{/if}>Daily supply</option>
+      <option value="AVERAGE_RATE" {#if page.query.sort.name == 'AVERAGE_RATE'}selected{/if}>Effective rate</option>
+      <option value="NAME" {#if page.query.sort.name == 'NAME'}selected{/if}>Name</option>
+    </select>
+  </label>
+
+  <label>Show
+    <select name="limit">
+      <option value="10" {#if page.query.limit == 10}selected{/if}>10</option>
+      <option value="25" {#if page.query.limit == 25}selected{/if}>25</option>
+      <option value="100" {#if page.query.limit == 100}selected{/if}>100</option>
+      <option value="all" {#if page.query.showsAll()}selected{/if}>All</option>
+    </select>
+  </label>
+
+  <button type="submit" class="primary">Apply</button>
+  <span id="busy" class="htmx-indicator">Costing&hellip;</span>
+  <span class="spacer"></span>
+  <span class="meta" style="font-size:12px; color:var(--muted)">
+    {shell.planCount} plans &middot; data {shell.available.from} to {shell.available.to}
+  </span>
+</form>
+
+<main id="results">
+  {#include PlanBrowserResource/results.html shell=shell page=page /}
+</main>
+
+<aside id="detail">
+  {#if detail}{#include PlanBrowserResource/detail.html shell=shell detail=detail /}{/if}
+</aside>
+
+{/body}
+{/include}

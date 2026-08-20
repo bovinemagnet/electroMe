@@ -48,7 +48,7 @@ public class FragmentResource {
         var range = range(from, to);
         return Templates.dashboard(
                 Dashboard.of(comparisons.compare(range), analyses.analyse(range), range,
-                        market.conditions()));
+                        market.conditions(), localPlanIds()));
     }
 
     @GET
@@ -77,6 +77,20 @@ public class FragmentResource {
 
     private static String format(java.math.BigDecimal value) {
         return value == null ? "" : value.setScale(1, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    /**
+     * The plans defined as files.
+     *
+     * <p>They are the household's own tariff and the regulated benchmark, so the shortlist
+     * keeps them whatever the harvest turns up.
+     */
+    private java.util.Set<String> localPlanIds() {
+        var ids = new java.util.LinkedHashSet<String>();
+        for (var plan : planStore.localPlans()) {
+            ids.add(plan.id());
+        }
+        return ids;
     }
 
     /** Parses the requested window, falling back to the default and rejecting nonsense. */

@@ -7,6 +7,7 @@ import io.github.bovinemagnet.electrome.core.domain.UsageSeries;
 import io.github.bovinemagnet.electrome.core.tariff.Band;
 import io.github.bovinemagnet.electrome.core.tariff.Charge;
 import io.github.bovinemagnet.electrome.core.tariff.DailySupply;
+import io.github.bovinemagnet.electrome.core.tariff.ControlledLoad;
 import io.github.bovinemagnet.electrome.core.tariff.Demand;
 import io.github.bovinemagnet.electrome.core.tariff.Discount;
 import io.github.bovinemagnet.electrome.core.tariff.DiscountBasis;
@@ -44,7 +45,18 @@ public final class CostingEngine {
     }
 
     public BillBreakdown cost(UsageData usage, Plan plan, DateRange range) {
-        var consumption = usage.consumption().slice(range);
+        var controlled = usage.controlled().slice(range);
+        var controlledCharge = controlledCharge(plan);
+
+        // A household with a controlled circuit still uses that energy, whatever the plan says
+        // about it. Anything the plan's controlled rate does not cover — because the plan has no
+        // such rate, or because the energy fell outside the energised window — is priced as
+        // ordinary consumption, which is what the retailer does. Leaving it unpriced would make
+        // those plans look artificially cheap.
+        var consumption = controlled.isEmpty()
+                ? usage.consumption().slice(range)
+                : merge(usage.consumption().slice(range),
+                        notCoveredBy(controlledCharge, controlled));
         var export = usage.export().slice(range);
         var lines = new ArrayList<ChargeLine>();
         var discounts = new ArrayList<Discount>();
@@ -60,6 +72,7 @@ public final class CostingEngine {
                 case Demand c -> lines.add(demandLine(c, consumption));
                 case SolarFeedIn c -> lines.add(feedInLine(c, export));
                 case Discount c -> discounts.add(c);
+                case ControlledLoad c -> lines.add(controlledLine(c, controlled, consumption));
             }
         }
 
@@ -78,6 +91,59 @@ public final class CostingEngine {
         var days = BigDecimal.valueOf(consumption.billingDays().size());
         return new ChargeLine(charge.label(), ChargeKind.SUPPLY, days, Unit.DAY,
                 charge.centsPerDay(), dollars(days.multiply(charge.centsPerDay())));
+    }
+
+    /**
+     * Energy on the controlled circuit, at the controlled rate.
+     *
+     * <p>Where the plan states an energised window, energy outside it is not on the controlled
+     * tariff. It is priced as ordinary consumption instead, which is what the retailer does.
+     */
+    private ChargeLine controlledLine(
+            ControlledLoad charge, UsageSeries controlled, UsageSeries consumption) {
+        var kWh = BigDecimal.ZERO;
+        for (var reading : controlled.readings()) {
+            if (charge.covers(reading)) {
+                kWh = kWh.add(reading.kWh());
+            }
+        }
+        return new ChargeLine(charge.label(), ChargeKind.CONTROLLED, kWh, Unit.KWH,
+                charge.centsPerKWh(), dollars(kWh.multiply(charge.centsPerKWh())));
+    }
+
+    /** Controlled-circuit energy the plan's controlled rate does not apply to. */
+    private static UsageSeries notCoveredBy(ControlledLoad charge, UsageSeries controlled) {
+        if (charge == null) {
+            return controlled;
+        }
+        if (!charge.windowed()) {
+            return UsageSeries.empty();
+        }
+        var outside = new ArrayList<IntervalReading>();
+        for (var reading : controlled.readings()) {
+            if (!charge.covers(reading)) {
+                outside.add(reading);
+            }
+        }
+        return UsageSeries.of(outside);
+    }
+
+    private static ControlledLoad controlledCharge(Plan plan) {
+        for (var charge : plan.charges()) {
+            if (charge instanceof ControlledLoad controlled) {
+                return controlled;
+            }
+        }
+        return null;
+    }
+
+    /** Two series as one, start-ordered, for energy the plan prices together. */
+    private static UsageSeries merge(UsageSeries first, UsageSeries second) {
+        var all = new ArrayList<IntervalReading>(
+                first.readings().size() + second.readings().size());
+        all.addAll(first.readings());
+        all.addAll(second.readings());
+        return UsageSeries.of(all);
     }
 
     private ChargeLine flatLine(FlatRate charge, UsageSeries consumption) {

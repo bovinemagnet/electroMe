@@ -1,0 +1,10 @@
+id: spare-plan
+name: Spare Plan
+retailer: Zeta Energy
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 125
+  - type: flatRate
+    cents: 27
