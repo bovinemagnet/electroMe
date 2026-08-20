@@ -102,6 +102,15 @@ public record PlanDetail(
         return !conditions.isEmpty();
     }
 
+    /** Whether the total above assumes the household earns a conditional discount. */
+    public boolean assumesConditions() {
+        return bill.assumesConditions();
+    }
+
+    public List<String> discountConditions() {
+        return bill.discountConditions();
+    }
+
     public boolean hasExtras() {
         return !fees.isEmpty() || !incentives.isEmpty();
     }

@@ -17,13 +17,13 @@ Here is a real Victorian time-of-use tariff, exactly as it appears on the bill:
 | 12am–6am | 4.99 c/kWh
 |===
 
-As a plan file, `plans/current-tou.yaml`:
+As a plan file, `plans/powershop-tou.yaml`:
 
 [source,yaml]
 ----
-id: current-tou                                                   # <1>
-name: Current tariff
-retailer: AGL
+id: powershop-tou                                                 # <1>
+name: Powershop time of use
+retailer: Powershop
 zone: AUSNET                                                      # <2>
 gstInclusive: true                                                # <3>
 charges:

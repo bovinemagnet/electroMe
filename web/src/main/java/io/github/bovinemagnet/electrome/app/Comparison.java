@@ -5,11 +5,26 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
-/** Every plan costed over one window, cheapest first. */
-public record Comparison(DateRange range, List<PlanResult> results) {
+/**
+ * Every plan costed over one window, cheapest first.
+ *
+ * @param baselinePlanId the household's own tariff, against which a saving is a saving; null
+ *     when none is configured, in which case plans are only ranked against each other
+ */
+public record Comparison(DateRange range, List<PlanResult> results, String baselinePlanId) {
 
     public Comparison {
         results = List.copyOf(results);
+    }
+
+    /** A comparison with no household tariff to measure against. */
+    public Comparison(DateRange range, List<PlanResult> results) {
+        this(range, results, null);
+    }
+
+    /** The household's own tariff, when it is among the plans costed. */
+    public Optional<PlanResult> baseline() {
+        return results.stream().filter(PlanResult::baseline).findFirst();
     }
 
     public boolean empty() {

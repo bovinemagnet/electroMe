@@ -18,6 +18,10 @@ the command line with `-D`, or by an environment variable.
 | `../plans`
 | Directory of plan YAML files. Every `.yaml` or `.yml` in it is loaded.
 
+| `electrome.baseline.plan`
+| `agl-flat-current`
+| The `id` of the plan you are actually on. Savings are measured against it.
+
 | `electrome.default-window-days`
 | `365`
 | How far back the date range reaches when the page first opens. Clamped to the data you actually
@@ -81,3 +85,21 @@ Neither the usage file nor the plans directory is required for the application t
 or unreadable file is reported on the page, naming the absolute path it looked for, rather than
 failing the boot. Someone who has not yet exported their data should get an explanation, not a
 stack trace.
+
+== Why the baseline plan is set, not inferred
+
+`electrome.baseline.plan` is a plain property because there is no rule that can work it out.
+Nothing about a directory of plan YAML files says which one a given household actually signed up
+to and is paying under — two plans can differ only in a rate that never shows up in the usage
+data, and the plan you are on is not necessarily the cheapest, the newest, or in any way
+distinguishable from the others by inspection. Only the household knows, so the household says.
+
+When the property is set and its `id` matches a loaded plan, the dashboard's shortlist gains a
+"vs your plan" column, showing what switching to each other plan would have saved over the window,
+and the row for the baseline plan itself reads "your plan" rather than a saving figure.
+
+When it is left blank, or names a plan that is not among the ones loaded, nothing breaks. The
+comparison still ranks every plan against every other; it just does so with no "vs your plan"
+column, because there is nothing to compare against. That degrading gracefully is deliberate: a
+missing or non-matching baseline plan id is a configuration gap, not an error, and it must never
+be the reason the page fails to render.

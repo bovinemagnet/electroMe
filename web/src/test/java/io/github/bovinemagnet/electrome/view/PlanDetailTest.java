@@ -12,6 +12,9 @@ import io.github.bovinemagnet.electrome.core.tariff.Band;
 import io.github.bovinemagnet.electrome.core.tariff.Charge;
 import io.github.bovinemagnet.electrome.core.tariff.DailySupply;
 import io.github.bovinemagnet.electrome.core.tariff.DaySelector;
+import io.github.bovinemagnet.electrome.core.tariff.Discount;
+import io.github.bovinemagnet.electrome.core.tariff.DiscountBasis;
+import io.github.bovinemagnet.electrome.core.tariff.DiscountScope;
 import io.github.bovinemagnet.electrome.core.tariff.DistributionZone;
 import io.github.bovinemagnet.electrome.core.tariff.FlatRate;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
@@ -181,6 +184,36 @@ class PlanDetailTest {
 
         assertThat(detail.conditions()).isEqualTo(conditions);
         assertThat(detail.conditional()).isTrue();
+    }
+
+    /**
+     * A conditional discount is a different claim from an eligibility requirement.
+     *
+     * <p>Eligibility says who may sign up. A pay-on-time discount says what the household must
+     * keep doing for the number on the screen to stay true. Conflating them would either hide
+     * the plan for the wrong reason or show its best case as its only case.
+     */
+    @Test
+    void saysWhenTheTotalDependsOnEarningADiscount() {
+        var detail = detail(
+                plan(threeBands(),
+                        new Discount("Pay on time", DiscountBasis.PERCENTAGE,
+                                DiscountScope.USAGE, new BigDecimal("12"),
+                                "pay every bill by its due date")),
+                PlanExtras.none(), List.of());
+
+        assertThat(detail.assumesConditions()).isTrue();
+        assertThat(detail.discountConditions())
+                .containsExactly("Pay on time: pay every bill by its due date");
+        // Not an eligibility requirement: anyone may sign up to this plan.
+        assertThat(detail.conditional()).isFalse();
+    }
+
+    @Test
+    void aPlanWithNoConditionalDiscountAssumesNothing() {
+        var detail = detail(plan(threeBands()), PlanExtras.none(), List.of());
+        assertThat(detail.assumesConditions()).isFalse();
+        assertThat(detail.discountConditions()).isEmpty();
     }
 
     // -----------------------------------------------------------------

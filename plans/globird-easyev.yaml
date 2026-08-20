@@ -1,0 +1,40 @@
+# GloBird EasyEV, AusNet distribution zone.
+# Retailer fact sheet, retrieved 20 August 2026. GST inclusive.
+#
+# TODO: the window hours below are NOT confirmed against the fact sheet. The rates are
+# (6.0c capped off-peak, 34.1c off-peak balance and shoulder, 64.9c peak), but which hours
+# each window covers is taken from the plan's usual Victorian shape and must be checked
+# before any figure from this file is acted on.
+#
+# TODO: the 20 kWh per day cap is modelled as one cap per off-peak window, so the two windows
+# below each get their own 20 kWh. If the retailer publishes a single daily cap shared across
+# both, this file under-costs the plan. The tariff model has no way to express one cap spanning
+# two disjoint windows; confirm which it is.
+id: globird-easyev
+name: EasyEV
+retailer: GloBird
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 148.5
+  - type: timeOfUse
+    bands:
+      - from: "00:00"
+        to: "06:00"
+        days: ALL
+        reset: DAILY
+        tiers:
+          - { upToKWh: 20, cents: 6.0 }
+          - { cents: 34.1 }
+      - from: "11:00"
+        to: "14:00"
+        days: ALL
+        reset: DAILY
+        tiers:
+          - { upToKWh: 20, cents: 6.0 }
+          - { cents: 34.1 }
+      - { from: "16:00", to: "21:00", days: ALL, cents: 64.9 }
+      - { from: "06:00", to: "11:00", days: ALL, cents: 34.1 }
+      - { from: "14:00", to: "16:00", days: ALL, cents: 34.1 }
+      - { from: "21:00", to: "24:00", days: ALL, cents: 34.1 }

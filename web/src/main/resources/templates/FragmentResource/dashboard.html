@@ -69,20 +69,23 @@
   <p class="explain">
     Your own tariff, the cheapest plan you can actually sign up to, the cheapest that exists at
     all, and the regulated benchmark &mdash; priced against your actual half-hourly consumption.
+    The <em>vs your plan</em> column is what switching would have saved you over this window.
     Bars are stacked by charge component, so you can see <em>where</em> the difference sits
     rather than only which plan wins.
     A plan marked <span class="conditional">requirements</span> is only offered to households
     that own or join something &mdash; solar, a battery, an electric vehicle, a membership &mdash;
     so check you qualify before treating its saving as available. Hover the marker to read them.
     Ordinary conditions every plan carries, such as being in the right distribution zone, are not
-    marked.
+    marked. A total followed by <abbr class="conditional-total">*</abbr> holds only if you meet
+    the discount condition beside it &mdash; paying every bill on time, typically. Hover it to
+    read the condition.
   </p>
   <div class="table-scroll">
     <table>
       <thead>
         <tr>
           <th>Plan</th><th>Where the money goes</th>
-          <th class="right">Total</th><th class="right">vs best</th><th class="right">Avg rate</th>
+          <th class="right">Total</th>{#if dashboard.hasBaseline()}<th class="right">vs your plan</th>{/if}<th class="right">vs best</th><th class="right">Avg rate</th>
         </tr>
       </thead>
       <tbody>
@@ -103,7 +106,12 @@
             {/for}
             </div>
           </td>
-          <td class="right num" style="font-size:17px; font-weight:600">{money:dollars(row.result.total())}</td>
+          <td class="right num" style="font-size:17px; font-weight:600">{money:dollars(row.result.total())}{#if row.assumesConditions()}<abbr class="conditional-total" title="{row.discountConditionsText()}">*</abbr>{/if}</td>
+          {#if dashboard.hasBaseline()}
+          <td class="right num" style="font-size:13.5px; color:{#if row.result.baseline()}var(--muted){#else if row.result.cheaperThanBaseline()}var(--offpeak){#else}var(--peak){/if}">
+            {#if row.result.baseline()}your plan{#else if row.result.cheaperThanBaseline()}&minus;{money:dollars(row.result.savingAgainstBaseline())}{#else}+{money:dollars(row.result.differenceFromBaseline())}{/if}
+          </td>
+          {/if}
           <td class="right num" style="font-size:13.5px; color:{#if row.result.cheapest}var(--muted){#else}var(--peak){/if}">
             {#if row.result.cheapest}&mdash;{#else}+{money:dollars(row.result.differenceFromBest())}{/if}
           </td>

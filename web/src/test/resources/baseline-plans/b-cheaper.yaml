@@ -1,0 +1,11 @@
+# Cheaper than the baseline, with nothing asked of the household in return.
+id: cheaper
+name: Cheaper plan
+retailer: Test
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: flatRate
+    cents: 25

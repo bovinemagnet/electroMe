@@ -8,6 +8,8 @@ import java.math.MathContext;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -21,10 +23,12 @@ import java.util.Objects;
  * saving, and nothing in the output would reveal it.
  */
 public record LoadShift(
-        int fromMinuteOfDay, int toMinuteOfDay, int targetMinuteOfDay, BigDecimal proportion)
+        int fromMinuteOfDay,
+        int toMinuteOfDay,
+        int targetFromMinuteOfDay,
+        int targetToMinuteOfDay,
+        BigDecimal proportion)
         implements Scenario {
-
-    private static final int TARGET_WINDOW_MINUTES = 360;
 
     public LoadShift {
         Objects.requireNonNull(proportion, "proportion");
@@ -32,17 +36,39 @@ public record LoadShift(
             throw new IllegalArgumentException(
                     "Proportion must be between 0 and 1, got " + proportion);
         }
+        if (targetFromMinuteOfDay == targetToMinuteOfDay) {
+            throw new IllegalArgumentException(
+                    "The target window has no width, so there is nowhere to shift load to");
+        }
     }
 
     /** Shift out of the 16:00-21:00 evening peak into the 00:00-06:00 overnight window. */
     public static LoadShift outOfPeak(BigDecimal proportion) {
-        return new LoadShift(960, 1260, 0, proportion);
+        return into(0, 360, proportion);
+    }
+
+    /**
+     * Shift out of the 16:00-21:00 evening peak into any window.
+     *
+     * <p>The target window is a parameter because the windows worth shifting into are not all
+     * six hours long and not all overnight: a capped free window is typically four hours in
+     * the middle of the day, and whether moving the pool pump and the car into it pays is the
+     * decision this tool exists to inform.
+     */
+    public static LoadShift into(
+            int targetFromMinuteOfDay, int targetToMinuteOfDay, BigDecimal proportion) {
+        return new LoadShift(960, 1260, targetFromMinuteOfDay, targetToMinuteOfDay, proportion);
     }
 
     @Override
     public String label() {
         return "Shift " + proportion.multiply(new BigDecimal("100")).stripTrailingZeros()
-                .toPlainString() + "% of peak load overnight";
+                .toPlainString() + "% of peak load into "
+                + clock(targetFromMinuteOfDay) + "-" + clock(targetToMinuteOfDay);
+    }
+
+    private static String clock(int minuteOfDay) {
+        return String.format(Locale.ROOT, "%02d:%02d", minuteOfDay / 60, minuteOfDay % 60);
     }
 
     @Override
@@ -61,7 +87,17 @@ public record LoadShift(
             }
         }
 
-        int targetIntervals = countTargetIntervals(source.consumption());
+        // Per day, because a first or last day may be partial and spreading a whole day's
+        // shift across a part day's intervals would move energy between days.
+        var targetIntervals = new HashMap<LocalDate, Integer>();
+        for (var reading : source.consumption().readings()) {
+            if (inTarget(reading.minuteOfDay())) {
+                targetIntervals.merge(reading.date(), 1, Integer::sum);
+            }
+        }
+
+        var remainingIntervals = new HashMap<>(targetIntervals);
+        var placed = new HashMap<LocalDate, BigDecimal>();
         var shifted = new ArrayList<IntervalReading>(source.consumption().readings().size());
 
         for (var reading : source.consumption().readings()) {
@@ -69,11 +105,8 @@ public record LoadShift(
             if (inSource(reading.minuteOfDay())) {
                 kWh = kWh.subtract(kWh.multiply(proportion));
             } else if (inTarget(reading.minuteOfDay())) {
-                BigDecimal dayShift = shiftedPerDay.getOrDefault(reading.date(), BigDecimal.ZERO);
-                if (dayShift.signum() > 0 && targetIntervals > 0) {
-                    kWh = kWh.add(dayShift.divide(
-                            BigDecimal.valueOf(targetIntervals), MathContext.DECIMAL64));
-                }
+                kWh = kWh.add(share(reading.date(), shiftedPerDay, targetIntervals,
+                        remainingIntervals, placed));
             }
             shifted.add(new IntervalReading(
                     reading.start(), reading.length(), kWh, reading.quality()));
@@ -82,27 +115,55 @@ public record LoadShift(
         return new UsageData(UsageSeries.of(shifted), source.export());
     }
 
+    /**
+     * This interval's slice of the day's shifted energy.
+     *
+     * <p>An even split rarely divides exactly — five kilowatt hours across eighteen half hours
+     * does not — so the day's last target interval takes whatever the division left behind.
+     * Without that, every scenario would quietly lose a fraction of a kilowatt hour and present
+     * the loss as a saving.
+     */
+    private static BigDecimal share(
+            LocalDate date,
+            Map<LocalDate, BigDecimal> shiftedPerDay,
+            Map<LocalDate, Integer> targetIntervals,
+            Map<LocalDate, Integer> remainingIntervals,
+            Map<LocalDate, BigDecimal> placed) {
+
+        BigDecimal dayShift = shiftedPerDay.getOrDefault(date, BigDecimal.ZERO);
+        int intervals = targetIntervals.getOrDefault(date, 0);
+        int left = remainingIntervals.merge(date, -1, Integer::sum);
+        if (dayShift.signum() <= 0 || intervals == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal alreadyPlaced = placed.getOrDefault(date, BigDecimal.ZERO);
+        BigDecimal amount = left == 0
+                ? dayShift.subtract(alreadyPlaced)
+                : dayShift.divide(BigDecimal.valueOf(intervals), MathContext.DECIMAL64);
+        placed.put(date, alreadyPlaced.add(amount));
+        return amount;
+    }
+
     private boolean inSource(int minuteOfDay) {
-        return minuteOfDay >= fromMinuteOfDay && minuteOfDay < toMinuteOfDay;
+        return inWindow(minuteOfDay, fromMinuteOfDay, toMinuteOfDay);
     }
 
     private boolean inTarget(int minuteOfDay) {
-        return minuteOfDay >= targetMinuteOfDay
-                && minuteOfDay < targetMinuteOfDay + TARGET_WINDOW_MINUTES;
+        return inWindow(minuteOfDay, targetFromMinuteOfDay, targetToMinuteOfDay);
     }
 
-    /** Intervals per day falling in the target window, taken from the data itself. */
-    private int countTargetIntervals(UsageSeries series) {
-        if (series.isEmpty()) {
-            return 0;
+    /**
+     * Half-open over {@code [from, to)}, wrapping past midnight when the end precedes the start.
+     *
+     * <p>A car left on charge from 21:00 to 06:00 is an ordinary target window, so a window
+     * that cannot wrap would rule out the commonest overnight shift there is.
+     */
+    private static boolean inWindow(int minuteOfDay, int from, int to) {
+        if (to <= from) {
+            return minuteOfDay >= from || minuteOfDay < to;
         }
-        LocalDate first = series.readings().get(0).date();
-        int count = 0;
-        for (var reading : series.readings()) {
-            if (reading.date().equals(first) && inTarget(reading.minuteOfDay())) {
-                count++;
-            }
-        }
-        return count;
+        return minuteOfDay >= from && minuteOfDay < to;
     }
+
 }

@@ -5,7 +5,9 @@ import io.github.bovinemagnet.electrome.core.appliance.SchedulableLoad;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeMap;
 
 /**
@@ -134,6 +136,7 @@ public final class LoadScheduler {
         order.sort(Comparator.comparing(profile::rateAt));
 
         var energy = new TreeMap<Integer, BigDecimal>();
+        var headroomLeft = new HashMap<String, BigDecimal>();
         var cost = BigDecimal.ZERO;
         for (var slot : order) {
             if (remaining.signum() <= 0) {
@@ -141,12 +144,40 @@ public final class LoadScheduler {
             }
             var delivered = remaining.min(perSlot);
             energy.put(slot, delivered);
-            cost = cost.add(delivered.multiply(profile.rateAt(slot)));
+            cost = cost.add(costOf(profile, slot, delivered, headroomLeft));
             remaining = remaining.subtract(delivered);
         }
 
         return new LoadSchedule(energy, cost, true, BigDecimal.ZERO, null,
                 profile.timingMatters());
+    }
+
+    /**
+     * What energy in one half hour costs, once a capped window's allowance is accounted for.
+     *
+     * <p>On a plan whose cheap window is capped, the rate is not a number: it is free until the
+     * day's allowance runs out and dearer after. A 28 kWh car charge into a window with 20 kWh
+     * of headroom left is not a free charge, and reporting it as one would recommend a plan on
+     * a saving that does not exist.
+     *
+     * <p>Slots of the same band draw on one allowance, which is why the remaining headroom is
+     * carried across the whole run rather than reset each half hour.
+     */
+    private static BigDecimal costOf(
+            MarginalRateProfile profile,
+            int slot,
+            BigDecimal kWh,
+            Map<String, BigDecimal> headroomLeft) {
+
+        var cap = profile.capAt(slot);
+        if (cap == null) {
+            return kWh.multiply(profile.rateAt(slot));
+        }
+        var left = headroomLeft.computeIfAbsent(cap.band(), band -> cap.headroomKWh());
+        var free = left.min(kWh);
+        headroomLeft.put(cap.band(), left.subtract(free));
+        return free.multiply(profile.rateAt(slot))
+                .add(kWh.subtract(free).multiply(cap.balanceCentsPerKWh()));
     }
 
     /** The earliest deadline that would deliver the whole run, for a window that cannot. */

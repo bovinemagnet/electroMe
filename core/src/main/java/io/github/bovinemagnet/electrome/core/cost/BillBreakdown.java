@@ -2,10 +2,12 @@ package io.github.bovinemagnet.electrome.core.cost;
 
 import io.github.bovinemagnet.electrome.core.domain.DateRange;
 import io.github.bovinemagnet.electrome.core.domain.IntervalReading;
+import io.github.bovinemagnet.electrome.core.tariff.Discount;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,6 +48,33 @@ public record BillBreakdown(
             }
         }
         return sum;
+    }
+
+    /**
+     * What the household must do for this total to hold.
+     *
+     * <p>Empty for a plan whose rates are simply its rates. A retailer that publishes a
+     * before- and an after-discount column has its after column priced here, and a total that
+     * assumes the household pays every bill on time is not the same claim as a total that does
+     * not. Every view showing such a total shows this beside it.
+     */
+    public List<String> discountConditions() {
+        var conditions = new ArrayList<String>();
+        for (var charge : plan.charges()) {
+            if (charge instanceof Discount discount && discount.conditional()) {
+                conditions.add(discount.name() + ": " + discount.condition());
+            }
+        }
+        return List.copyOf(conditions);
+    }
+
+    public boolean assumesConditions() {
+        return !discountConditions().isEmpty();
+    }
+
+    /** The conditions as one string, for a tooltip. */
+    public String discountConditionsText() {
+        return String.join("; ", discountConditions());
     }
 
     /** True when every interval in range was priced by some charge. */

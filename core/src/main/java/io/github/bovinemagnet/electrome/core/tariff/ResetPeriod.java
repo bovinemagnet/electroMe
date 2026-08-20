@@ -10,6 +10,16 @@ public enum ResetPeriod {
     QUARTERLY,
     ANNUAL;
 
+    /** The period as it reads in a sentence, for example "50 kWh per day". */
+    public String noun() {
+        return switch (this) {
+            case DAILY -> "day";
+            case MONTHLY -> "month";
+            case QUARTERLY -> "quarter";
+            case ANNUAL -> "year";
+        };
+    }
+
     /**
      * An opaque grouping key. Two dates in the same accumulation window return equal keys.
      */

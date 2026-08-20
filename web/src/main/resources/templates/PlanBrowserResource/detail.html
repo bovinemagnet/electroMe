@@ -19,6 +19,15 @@
   </div>
   {/if}
 
+  {#if detail.assumesConditions()}
+  <div class="notice warning" style="margin:10px 0">
+    <h2 style="font-size:14px; margin-top:0">This total assumes a conditional discount</h2>
+    <ul>{#for condition in detail.discountConditions()}<li>{condition}</li>{/for}</ul>
+    <p>Miss the condition and you pay the retailer's undiscounted rates, which are higher than
+    the figures priced above.</p>
+  </div>
+  {/if}
+
   {!
     The tariff drawn on a 24-hour axis, so its shape is visible rather than inferred from a
     list of numbers. A plan that prices weekdays and weekends differently gets a strip each.

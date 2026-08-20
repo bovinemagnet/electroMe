@@ -92,6 +92,11 @@ public record Dashboard(
         return comparison.empty() || highlights == null;
     }
 
+    /** Whether there is a household tariff to measure a saving against. */
+    public boolean hasBaseline() {
+        return comparison.baseline().isPresent();
+    }
+
     /** How many plans the shortlist left for the browser to show. */
     public int hiddenFromShortlist() {
         return rows.size() - shortlist.size();

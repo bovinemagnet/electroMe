@@ -1,0 +1,14 @@
+# The tariff currently in force at the premises: AGL, flat rate, anytime.
+# This is the plan every "what would switching save" figure is measured against;
+# electrome.baseline.plan names it.
+# Rates as billed, GST inclusive.
+id: agl-flat-current
+name: AGL flat rate, anytime
+retailer: AGL
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 128.24
+  - type: flatRate
+    cents: 31.98

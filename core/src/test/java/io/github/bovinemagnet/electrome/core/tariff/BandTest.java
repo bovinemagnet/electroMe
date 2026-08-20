@@ -8,6 +8,7 @@ import io.github.bovinemagnet.electrome.core.domain.Quality;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class BandTest {
@@ -118,6 +119,54 @@ class BandTest {
         assertThatThrownBy(
                         () -> Band.parse("16:00", "21:00", DaySelector.ALL, new BigDecimal("-1")))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void aCappedBandReportsItsFirstBlockAsTheBandRate() {
+        var free = Band.parseTiered("11:00", "15:00", DaySelector.ALL, ResetPeriod.DAILY,
+                List.of(new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                        new Tier(null, new BigDecimal("9.405"))));
+        assertThat(free.capped()).isTrue();
+        assertThat(free.centsPerKWh()).isEqualByComparingTo("0");
+        assertThat(free.describe()).isEqualTo("11:00-15:00");
+    }
+
+    @Test
+    void aSingleRateBandIsOneUnboundedBlock() {
+        var peak = Band.parse("16:00", "21:00", DaySelector.ALL, PEAK);
+        assertThat(peak.capped()).isFalse();
+        assertThat(peak.reset()).isNull();
+        assertThat(peak.tiers()).hasSize(1);
+        assertThat(peak.tiers().get(0).unbounded()).isTrue();
+    }
+
+    @Test
+    void rejectsBlocksWithNoResetPeriod() {
+        // A cap that never starts again is not a cap.
+        assertThatThrownBy(() -> new Band(660, 900, DaySelector.ALL, null,
+                        List.of(new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                                new Tier(null, new BigDecimal("9.405")))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("reset period");
+    }
+
+    @Test
+    void rejectsAResetPeriodOnASingleRateBand() {
+        assertThatThrownBy(() -> new Band(660, 900, DaySelector.ALL, ResetPeriod.DAILY,
+                        Tier.single(PEAK)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must not declare a reset period");
+    }
+
+    @Test
+    void rejectsBlocksThatDoNotAscend() {
+        assertThatThrownBy(() -> Band.parseTiered("11:00", "15:00", DaySelector.ALL,
+                        ResetPeriod.DAILY,
+                        List.of(new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                                new Tier(new BigDecimal("20"), BigDecimal.ONE),
+                                new Tier(null, BigDecimal.TEN))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ascending");
     }
 
     @Test

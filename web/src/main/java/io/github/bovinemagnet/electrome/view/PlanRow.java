@@ -22,4 +22,19 @@ public record PlanRow(PlanResult result, BillBars bars, List<String> conditions)
     public String conditionsText() {
         return String.join(" ", conditions);
     }
+
+    /**
+     * Whether this row's total assumes the household does something to earn a discount.
+     *
+     * <p>Distinct from {@link #conditional()}, which is about who may sign up at all. A
+     * pay-on-time discount does not restrict eligibility, so folding the two together would
+     * hide such a plan from the default view for the wrong reason.
+     */
+    public boolean assumesConditions() {
+        return result.bill().assumesConditions();
+    }
+
+    public String discountConditionsText() {
+        return result.bill().discountConditionsText();
+    }
 }

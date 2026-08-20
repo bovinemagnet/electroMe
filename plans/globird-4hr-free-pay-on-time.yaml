@@ -1,0 +1,37 @@
+# GloBird "4 Hour Free", AusNet distribution zone.
+# Retailer fact sheet, retrieved 20 August 2026. GST inclusive.
+#
+# These are the AFTER-DISCOUNT rates: GloBird publishes a before- and an after-discount column,
+# and the discount is conditional on paying every bill on time. The file is named and titled to
+# say so, because a total that quietly assumes the best case is the one mistake this comparison
+# most needs to avoid.
+#
+# TODO: when the before-discount column is to hand, put those rates in the charges and express
+# the gap as a `discount` with `condition: pay on time`, so both cases come from one file.
+#
+# The free window is capped at 50 kWh per day; consumption inside 11:00-15:00 beyond that is
+# charged at 9.405c. The peak window carries its own, independent 15 kWh per day block.
+id: globird-4hr-free-pay-on-time
+name: 4 Hour Free (pay-on-time rates)
+retailer: GloBird
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 127.49
+  - type: timeOfUse
+    bands:
+      - from: "11:00"
+        to: "15:00"
+        days: ALL
+        reset: DAILY
+        tiers:
+          - { upToKWh: 50, cents: 0.0 }
+          - { cents: 9.405 }
+      - from: "15:00"
+        to: "11:00"
+        days: ALL
+        reset: DAILY
+        tiers:
+          - { upToKWh: 15, cents: 31.559 }
+          - { cents: 33.963 }

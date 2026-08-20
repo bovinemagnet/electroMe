@@ -79,7 +79,7 @@
           </td>
           <td class="plan-sub">{row.retailer()}</td>
           <td class="plan-sub">{row.bill().plan().charges().size()} components</td>
-          <td class="right num" style="font-size:17px; font-weight:600">{money:dollars(row.total())}</td>
+          <td class="right num" style="font-size:17px; font-weight:600">{money:dollars(row.total())}{#if row.bill().assumesConditions()}<abbr class="conditional-total" title="{row.bill().discountConditionsText()}">*</abbr>{/if}</td>
           <td class="right num" style="font-size:13.5px; color:{#if row.cheapest}var(--muted){#else}var(--peak){/if}">
             {#if row.cheapest}&mdash;{#else}+{money:dollars(row.differenceFromBest())}{/if}
           </td>

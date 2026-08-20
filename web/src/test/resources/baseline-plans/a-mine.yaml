@@ -1,0 +1,11 @@
+# The tariff this fixture household is on: the baseline savings are measured against.
+id: mine
+name: My current plan
+retailer: Test
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: flatRate
+    cents: 30

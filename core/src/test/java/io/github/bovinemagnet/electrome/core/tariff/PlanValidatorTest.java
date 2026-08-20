@@ -32,6 +32,39 @@ class PlanValidatorTest {
         assertThatCode(() -> PlanValidator.validate(plan)).doesNotThrowAnyException();
     }
 
+    /**
+     * Capping a band changes what it charges, not when it applies.
+     *
+     * <p>The tiling check has to keep working over capped bands, because a plan whose free
+     * window leaves part of the day unpriced would silently under-cost a household.
+     */
+    @Test
+    void acceptsCappedBandsThatStillTileTheDay() {
+        var plan = planOf(
+                new DailySupply(new BigDecimal("127.49")),
+                new TimeOfUse(List.of(
+                        Band.parseTiered("11:00", "15:00", DaySelector.ALL, ResetPeriod.DAILY,
+                                List.of(new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                                        new Tier(null, new BigDecimal("9.405")))),
+                        Band.parseTiered("15:00", "11:00", DaySelector.ALL, ResetPeriod.DAILY,
+                                List.of(new Tier(new BigDecimal("15"), new BigDecimal("31.559")),
+                                        new Tier(null, new BigDecimal("33.963")))))));
+        assertThatCode(() -> PlanValidator.validate(plan)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsCappedBandsThatLeaveTheDayUnpriced() {
+        var plan = planOf(
+                new DailySupply(new BigDecimal("127.49")),
+                new TimeOfUse(List.of(
+                        Band.parseTiered("11:00", "15:00", DaySelector.ALL, ResetPeriod.DAILY,
+                                List.of(new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                                        new Tier(null, new BigDecimal("9.405")))))));
+        assertThatThrownBy(() -> PlanValidator.validate(plan))
+                .isInstanceOf(InvalidPlanException.class)
+                .hasMessageContaining("is not priced from 00:00");
+    }
+
     @Test
     void acceptsAMidnightWrappingBand() {
         var plan = planOf(

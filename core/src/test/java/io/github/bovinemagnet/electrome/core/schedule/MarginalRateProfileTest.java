@@ -200,6 +200,34 @@ class MarginalRateProfileTest {
         assertThat(profile.inexactBecause()).containsIgnoringCase("demand");
     }
 
+    /**
+     * A capped window prices its first block, and says that it has.
+     *
+     * <p>A static 48-slot profile cannot express a rate that changes once the day's cap is
+     * spent, so the honest thing is to report the cheap rate the scheduler will chase and to
+     * name the cap that limits it.
+     */
+    @Test
+    void aCappedBandReportsItsFirstBlockAndSaysSo() {
+        var plan = plan(new TimeOfUse(List.of(
+                Band.parseTiered("11:00", "15:00", DaySelector.ALL, ResetPeriod.DAILY, List.of(
+                        new Tier(new BigDecimal("50"), BigDecimal.ZERO),
+                        new Tier(null, new BigDecimal("9.405")))),
+                Band.parse("15:00", "11:00", DaySelector.ALL, new BigDecimal("31.559")))));
+
+        var profile = MarginalRateProfile.of(plan, noSolar(), DaySelector.ALL);
+
+        assertThat(profile.rateAt(22)).isEqualByComparingTo("0");
+        assertThat(profile.rateAt(29)).isEqualByComparingTo("0");
+        assertThat(profile.rateAt(30)).isEqualByComparingTo("31.559");
+        assertThat(profile.exact()).isFalse();
+        assertThat(profile.inexactBecause())
+                .isEqualTo("11:00-15:00 is capped at 50 kWh/day; beyond it a unit costs 9.405c."
+                        + " The cost above deducts what your own household typically uses in "
+                        + "that window, but a heavier day than usual, or a second appliance "
+                        + "scheduled separately, will spend the cap sooner and cost more.");
+    }
+
     @Test
     void weekdayAndWeekendRatesAreReadSeparately() {
         var weekdayDear = plan(new TimeOfUse(List.of(
