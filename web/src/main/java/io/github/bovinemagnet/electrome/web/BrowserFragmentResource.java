@@ -26,6 +26,44 @@ public class BrowserFragmentResource {
     }
 
     @Inject PlanBrowsing browsing;
+    @Inject io.github.bovinemagnet.electrome.app.Shortlist shortlist;
+
+    /**
+     * Adds the ticked plans to the household's shortlist and re-renders the table.
+     *
+     * <p>A POST because it changes something that outlives the request: the selection is
+     * written beside the plan files, so it is still there after a restart.
+     */
+    @jakarta.ws.rs.POST
+    @jakarta.ws.rs.Path("/shortlist")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance pick(
+            @jakarta.ws.rs.FormParam("plans") List<String> plans,
+            @jakarta.ws.rs.FormParam("from") String from,
+            @jakarta.ws.rs.FormParam("to") String to) {
+
+        shortlist.add(plans == null ? List.of() : plans);
+        var range = browsing.range(from, to);
+        return Templates.results(
+                browsing.shell(range), browsing.page(range, browsing.query(
+                        null, null, List.of(), null, null, null)));
+    }
+
+    /** Drops one plan from the shortlist and re-renders. */
+    @jakarta.ws.rs.POST
+    @jakarta.ws.rs.Path("/shortlist/remove")
+    @Produces(MediaType.TEXT_HTML)
+    public TemplateInstance unpick(
+            @jakarta.ws.rs.FormParam("plan") String planId,
+            @jakarta.ws.rs.FormParam("from") String from,
+            @jakarta.ws.rs.FormParam("to") String to) {
+
+        shortlist.remove(planId);
+        var range = browsing.range(from, to);
+        return Templates.results(
+                browsing.shell(range), browsing.page(range, browsing.query(
+                        null, null, List.of(), null, null, null)));
+    }
 
     /** The results table alone, so applying a criterion does not reload the screen. */
     @GET

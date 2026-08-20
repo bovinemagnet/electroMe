@@ -16,14 +16,26 @@ import java.util.Set;
  * @param uncostedFees true when the plan publishes fees the total does not include
  * @param fullyPriced false when some of the household's energy fell outside every charge the
  *     plan defines, which makes its total a floor rather than a figure
+ * @param shortlisted true when the household has picked this plan out of the market
+ * @param withdrawn true when the register no longer publishes it and the tariff shown is the
+ *     last thing the retailer did publish
  */
 public record PlanNotes(
         Set<Requirement> requirements,
         List<String> eligibility,
         boolean uncostedFees,
-        boolean fullyPriced) {
+        boolean fullyPriced,
+        boolean shortlisted,
+        boolean withdrawn) {
 
-    private static final PlanNotes PLAIN = new PlanNotes(Set.of(), List.of(), false, true);
+    private static final PlanNotes PLAIN =
+            new PlanNotes(Set.of(), List.of(), false, true, false, false);
+
+    /** Notes from before a plan could be picked. */
+    public PlanNotes(Set<Requirement> requirements, List<String> eligibility,
+            boolean uncostedFees, boolean fullyPriced) {
+        this(requirements, eligibility, uncostedFees, fullyPriced, false, false);
+    }
 
     public PlanNotes {
         requirements = requirements == null ? Set.of() : Set.copyOf(requirements);
@@ -50,6 +62,6 @@ public record PlanNotes(
 
     /** True when anything about this row deserves a second look before acting on its total. */
     public boolean qualified() {
-        return hasRequirements() || uncostedFees || !fullyPriced;
+        return hasRequirements() || uncostedFees || !fullyPriced || withdrawn;
     }
 }

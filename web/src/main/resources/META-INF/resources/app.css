@@ -192,6 +192,14 @@ button.primary:hover { color: var(--bg); filter: brightness(1.08); }
 }
 .chip.fees { color: var(--warn); border-color: var(--warn); }
 .chip.warn { color: var(--peak); border-color: var(--peak); }
+.chip.picked { color: var(--accent); border-color: var(--accent); }
+.chip.drop {
+  background: none;
+  font-family: inherit;
+  color: var(--muted);
+  cursor: pointer;
+}
+.chip.drop:hover { color: var(--peak); border-color: var(--peak); }
 .verdict-panel { border-left: 3px solid var(--accent); }
 .unpriced { margin-top: 10px; font-size: 13.5px; }
 .unpriced summary { cursor: pointer; color: var(--muted); }

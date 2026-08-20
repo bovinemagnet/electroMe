@@ -47,6 +47,7 @@ public class WhatIfResource {
     @Inject UsageStore usage;
     @Inject PlanStore plans;
     @Inject ApplianceService appliances;
+    @Inject io.github.bovinemagnet.electrome.app.ShortlistService shortlist;
     @Inject PlanBrowsing browsing;
 
     @GET
@@ -88,7 +89,10 @@ public class WhatIfResource {
         var load = ApplianceCatalogue.build(
                 preset, perRun, power, availableMinute, deadlineMinute, runs);
 
-        var outcome = appliances.evaluate(usage.usage(), plans.plans(), load, range);
+        // The shortlist, not the whole register. Scheduling an appliance against three
+        // hundred tariffs answers a question nobody asked and buries the four the household
+        // actually cares about; a picked plan is here on the same footing as a plan file.
+        var outcome = appliances.evaluate(usage.usage(), shortlist.plans(), load, range);
 
         return Templates.whatIf(
                 shell(range), preset, ApplianceCatalogue.all(), outcome,

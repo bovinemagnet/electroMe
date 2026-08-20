@@ -3,6 +3,7 @@ package io.github.bovinemagnet.electrome.app;
 import io.github.bovinemagnet.electrome.core.tariff.DistributionZone;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import io.github.bovinemagnet.electrome.market.cdr.CdrCache;
+import io.github.bovinemagnet.electrome.market.cdr.CdrPlanMapper;
 import io.github.bovinemagnet.electrome.market.cdr.CdrClient;
 import io.github.bovinemagnet.electrome.market.cdr.CdrRegisterClient;
 import io.github.bovinemagnet.electrome.market.cdr.HarvestReport;
@@ -38,6 +39,7 @@ public class MarketPlanSource {
             extras = java.util.Map.of();
     private volatile HarvestReport report;
     private volatile String harvestError;
+    private volatile java.time.LocalDateTime harvestedAt;
 
     public boolean enabled() {
         return enabled;
@@ -76,6 +78,36 @@ public class MarketPlanSource {
         return extras;
     }
 
+    /**
+     * When the register was last read.
+     *
+     * <p>A comparison is only as fresh as its harvest, and a tariff published three weeks ago
+     * may not be on sale today. The screens that lean hardest on harvested plans say when.
+     */
+    public Optional<java.time.LocalDateTime> harvestedAt() {
+        return Optional.ofNullable(harvestedAt);
+    }
+
+    /**
+     * A plan the register no longer lists, recovered from the harvest cache.
+     *
+     * <p>A plan being withdrawn is itself worth knowing, and a household that picked one out
+     * should see it disappear from sale rather than simply disappear. The cached detail is the
+     * last thing the retailer published, which is exactly what the reader was looking at.
+     */
+    public Optional<Plan> fromCache(String planId) {
+        if (!enabled || planId == null || planId.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            var cache = new CdrCache(Workspace.resolveDirectory(cacheDir));
+            return cache.read(planId)
+                    .map(json -> CdrPlanMapper.map(json, DistributionZone.valueOf(zoneName)));
+        } catch (RuntimeException e) {
+            return Optional.empty();
+        }
+    }
+
     public Optional<String> harvestError() {
         return Optional.ofNullable(harvestError);
     }
@@ -97,6 +129,7 @@ public class MarketPlanSource {
             conditions = result.conditions();
             extras = result.extras();
             report = result.report();
+            harvestedAt = java.time.LocalDateTime.now();
             harvestError = null;
         } catch (RuntimeException e) {
             harvestError = "Harvest failed: " + e.getMessage();

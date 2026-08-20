@@ -3,7 +3,18 @@
   <p class="explain">
     {detail.plan().retailer()} &middot; {detail.plan().zone()}
     {#if detail.local}<span class="source-tag" title="Defined in your plans directory. A local file wins over a harvested plan of the same identifier.">from a file</span>{/if}
+    {#if detail.shortlisted}<span class="chip picked">Shortlisted</span>{/if}
+    {#if detail.withdrawn}<span class="chip warn">No longer published</span>{/if}
   </p>
+
+  {#if detail.harvested()}
+  <p class="explain" style="margin-top:-4px">
+    Published as <code>{detail.plan().id()}</code> on the Consumer Data Right register{#if detail.harvestDateKnown()}, read {detail.harvestedOn()}{/if}.
+    These figures are only as fresh as that reading: a tariff published then may not be on sale
+    now.{#if detail.withdrawn} This one is not &mdash; the register has stopped listing it, and
+    the rates below are the last the retailer published.{/if}
+  </p>
+  {/if}
 
   <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:10px">
     <span class="num figure">{money:dollars(detail.bill().totalRounded())}</span>

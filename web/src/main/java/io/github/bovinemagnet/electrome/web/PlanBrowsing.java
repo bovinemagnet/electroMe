@@ -34,6 +34,7 @@ public class PlanBrowsing {
     @Inject MarketPlanSource market;
     @Inject ComparisonService comparisons;
     @Inject PlanQueryService queries;
+    @Inject io.github.bovinemagnet.electrome.app.ShortlistService shortlist;
 
     /**
      * Costs every plan over the window, then narrows to what was asked for.
@@ -42,7 +43,9 @@ public class PlanBrowsing {
      * so a count like "37 hidden" is always truthful.
      */
     public PlanPage page(DateRange range, PlanQuery query) {
-        return queries.apply(comparisons.compare(range), query, market.conditions());
+        // The overload that reads the harvest and the shortlist for itself. Passing only the
+        // conditions here once cost every row its fee marker and its shortlist chip.
+        return queries.apply(comparisons.compare(range), query);
     }
 
     /**
@@ -52,14 +55,22 @@ public class PlanBrowsing {
      *     a stale link rather than a fault
      */
     public PlanDetail detail(String id, DateRange range) {
-        var plan = plans.byId(id).orElseThrow(() -> new NotFoundException("No plan " + id));
+        // A picked plan the register has stopped publishing is not in the plan list any more,
+        // but it is still on the shortlist and still has a detail page worth opening.
+        var plan = plans.byId(id)
+                .or(() -> shortlist.entryFor(id).map(
+                        io.github.bovinemagnet.electrome.app.ShortlistService.Entry::plan))
+                .orElseThrow(() -> new NotFoundException("No plan " + id));
         boolean local = plans.localPlans().stream().anyMatch(p -> p.id().equals(id));
         return PlanDetail.of(
                 comparisons.cost(plan, range),
                 range,
                 market.conditions().get(id),
                 market.extras().get(id),
-                local);
+                local,
+                market.harvestedAt().orElse(null),
+                shortlist.picked(id),
+                shortlist.withdrawnIds().contains(id));
     }
 
     public Shell shell(DateRange range) {

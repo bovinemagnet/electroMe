@@ -39,3 +39,6 @@ build/live-cdr-cache/
 design-market/
 design-phase2/
 docs/superpowers/
+
+# The market picks, written beside the plan files.
+/plans/.shortlist

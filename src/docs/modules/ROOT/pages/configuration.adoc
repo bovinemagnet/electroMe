@@ -18,6 +18,10 @@ the command line with `-D`, or by an environment variable.
 | `../plans`
 | Directory of plan YAML files. Every `.yaml` or `.yml` in it is loaded.
 
+| `electrome.shortlist.name`
+| `.shortlist`
+| File holding the plans you have picked from the market, written in the plans directory.
+
 | `electrome.baseline.plan`
 | `agl-flat-current`
 | The `id` of the plan you are actually on. Savings are measured against it.

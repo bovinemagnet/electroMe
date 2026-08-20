@@ -24,6 +24,7 @@ public class ComparisonService {
 
     @Inject UsageStore usageStore;
     @Inject PlanStore planStore;
+    @Inject ShortlistService shortlist;
 
     /**
      * The plan the household is actually on.
@@ -57,7 +58,7 @@ public class ComparisonService {
      * exactly this code, so a scenario and the baseline can never diverge in their arithmetic.
      */
     public Comparison compare(DateRange range, UsageData usage) {
-        var plans = planStore.plans();
+        var plans = costable();
         var key = new Costed(usage, plans, range, baselinePlanId.orElse(null));
         var cached = cache.get(key);
         if (cached != null) {
@@ -104,6 +105,29 @@ public class ComparisonService {
         }
         cache.put(key, comparison);
         return comparison;
+    }
+
+    /**
+     * Everything worth costing: the known plans, plus anything on the shortlist they miss.
+     *
+     * <p>A picked plan the register has stopped publishing is not in the plan list any more,
+     * but it is still on the household's shortlist and still has to appear beside the others
+     * with a price against it. Dropping it from the costing would make it vanish from every
+     * screen except the one that says it was withdrawn.
+     */
+    private List<Plan> costable() {
+        var known = planStore.plans();
+        var ids = new java.util.HashSet<String>();
+        for (var plan : known) {
+            ids.add(plan.id());
+        }
+        var all = new ArrayList<>(known);
+        for (var entry : shortlist.entries()) {
+            if (ids.add(entry.planId())) {
+                all.add(entry.plan());
+            }
+        }
+        return List.copyOf(all);
     }
 
     /**

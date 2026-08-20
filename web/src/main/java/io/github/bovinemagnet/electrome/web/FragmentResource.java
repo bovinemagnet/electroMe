@@ -39,6 +39,7 @@ public class FragmentResource {
     @Inject ComparisonService comparisons;
     @Inject AnalysisService analyses;
     @Inject io.github.bovinemagnet.electrome.app.MarketPlanSource market;
+    @Inject io.github.bovinemagnet.electrome.app.ShortlistService shortlist;
 
     @GET
     @Path("/dashboard")
@@ -48,7 +49,7 @@ public class FragmentResource {
         var range = range(from, to);
         return Templates.dashboard(
                 Dashboard.of(comparisons.compare(range), analyses.analyse(range), range,
-                        market.conditions(), localPlanIds()));
+                        market.conditions(), shortlistedIds()));
     }
 
     @GET
@@ -85,10 +86,16 @@ public class FragmentResource {
      * <p>They are the household's own tariff and the regulated benchmark, so the shortlist
      * keeps them whatever the harvest turns up.
      */
-    private java.util.Set<String> localPlanIds() {
+    /**
+     * The plans the dashboard always shows: the household's own files and its own picks.
+     *
+     * <p>A tariff ticked out of the market is on the shortlist for the same reason a plan file
+     * is — somebody decided it was worth watching — so the two are not distinguished here.
+     */
+    private java.util.Set<String> shortlistedIds() {
         var ids = new java.util.LinkedHashSet<String>();
-        for (var plan : planStore.localPlans()) {
-            ids.add(plan.id());
+        for (var entry : shortlist.entries()) {
+            ids.add(entry.planId());
         }
         return ids;
     }

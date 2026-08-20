@@ -37,10 +37,15 @@ tariff would price.
 Once you harvest the market there are a couple of hundred tariffs, and ranking all of them here
 would bury the answer you came for. This panel therefore shows a handful:
 
-* your own tariff, and any other plan you have defined as a file
+* your own tariff, any other plan you have defined as a file, and any plan you have picked out of
+  the market
 * the cheapest plan anyone can sign up to
 * the cheapest plan that exists at all, with its requirement named beside it
 * the regulated benchmark
+
+A picked plan is treated exactly like one of your own files: it is guaranteed a place here rather
+than earning one purely on price. Pick plans from xref:browsing-plans.adoc#shortlist[the plan
+browser] — see *Keeping plans on a shortlist* there for how and why.
 
 The rest are not discarded — *Compare all plans* opens
 xref:browsing-plans.adoc[the plan browser], which is built for looking through them. To see why
