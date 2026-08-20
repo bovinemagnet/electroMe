@@ -1,0 +1,50 @@
+{
+  "data": {
+    "planId": "DIS001@VEC",
+    "displayName": "Discounted Flat",
+    "brandName": "Test Retailer",
+    "electricityContract": {
+      "discounts": [
+        {
+          "type": "CONDITIONAL",
+          "category": "PAY_ON_TIME",
+          "displayName": "Prompt Payment Discount",
+          "description": "5% when you pay the bill by the due date.",
+          "methodUType": "percentOfBill",
+          "percentOfBill": { "rate": "0.05" }
+        },
+        {
+          "type": "GUARANTEED",
+          "category": "OTHER",
+          "displayName": "Ongoing Discount",
+          "description": "Applied to every bill.",
+          "methodUType": "percentOfBill",
+          "percentOfBill": { "rate": "0.10" }
+        },
+        {
+          "type": "CONDITIONAL",
+          "category": "OTHER",
+          "displayName": "Sign-up credit",
+          "description": "$200 sign up credit for new customers only.",
+          "methodUType": "fixedAmount",
+          "fixedAmount": { "amount": "200.00" }
+        }
+      ],
+      "controlledLoad": [
+        {
+          "displayName": "Controlled load",
+          "rateBlockUType": "singleRate",
+          "singleRate": { "rates": [{ "unitPrice": "0.2005" }] }
+        }
+      ],
+      "tariffPeriod": [
+        {
+          "displayName": "All year",
+          "dailySupplyCharge": "1.10",
+          "rateBlockUType": "singleRate",
+          "singleRate": { "rates": [{ "unitPrice": "0.295" }] }
+        }
+      ]
+    }
+  }
+}

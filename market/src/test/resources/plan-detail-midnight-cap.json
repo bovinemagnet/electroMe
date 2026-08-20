@@ -1,0 +1,31 @@
+{
+  "data": {
+    "planId": "CAP003@VEC",
+    "displayName": "Four Hour Free Two Rate",
+    "brandName": "Test Retailer",
+    "electricityContract": {
+      "tariffPeriod": [
+        {
+          "displayName": "All year",
+          "dailySupplyCharge": "1.22",
+          "rateBlockUType": "timeOfUseRates",
+          "timeOfUseRates": [
+            {
+              "type": "SHOULDER",
+              "rates": [{ "volume": 15, "unitPrice": "0.302" }, { "unitPrice": "0.325" }],
+              "timeOfUse": [
+                { "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "15:00", "endTime": "00:00" },
+                { "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "00:00", "endTime": "11:00" }
+              ]
+            },
+            {
+              "type": "SHOULDER",
+              "rates": [{ "volume": 50, "unitPrice": "0.000001" }, { "unitPrice": "0.09" }],
+              "timeOfUse": [{ "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "11:00", "endTime": "15:00" }]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

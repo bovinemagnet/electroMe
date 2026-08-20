@@ -183,6 +183,7 @@ A credit per kilowatt hour exported. Contributes a negative amount to the bill.
 Only meaningful if your data contains export readings, or you are running a solar what-if
 scenario.
 
+[#discount]
 === discount
 
 Applied after every other charge.

@@ -1,0 +1,47 @@
+# GloBird "FOUR4FREE" Residential (Two Rate), AusNet distribution zone.
+# Consumer Data Right register, plan GLO781919MR@VEC, retrieved 20 August 2026.
+#
+# Rates below are the BEFORE-discount published rates, converted from the register's
+# GST-exclusive dollars: supply 1.22, peak block 0.302 then 0.325, free window 0.000001 then
+# 0.09, each x 110 to give GST-inclusive cents. The pay-on-time discount is expressed as a
+# charge in its own right, so both the discounted and the undiscounted total come from this
+# one file and the comparison can say which it is showing.
+#
+# The 5% is the best case and needs more than paying on time: 2% for paying by the due date,
+# a further 2% only if you also hold a gas account for the same premises on the same bill,
+# and 1% more for paying by direct debit. A household without gas earns 3% at most.
+#
+# The 15 kWh daily block covers 15:00 through to 11:00 the next morning as one allowance;
+# the register publishes it as two windows either side of midnight.
+id: globird-4hr-free
+name: FOUR4FREE (Two Rate)
+retailer: GloBird
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 134.20
+  - type: timeOfUse
+    bands:
+      - from: "11:00"
+        to: "15:00"
+        days: ALL
+        reset: DAILY
+        tiers:
+          - { upToKWh: 50, cents: 0.00011 }
+          - { cents: 9.90 }
+      - from: "15:00"
+        to: "11:00"
+        days: ALL
+        reset: DAILY
+        tiers:
+          - { upToKWh: 15, cents: 33.22 }
+          - { cents: 35.75 }
+  - type: discount
+    name: Prompt Payment Discounts
+    basis: PERCENTAGE
+    scope: TOTAL
+    value: 5
+    condition: >-
+      pay every bill by its due date by direct debit, and hold a gas account for the same
+      premises on the same bill. Without gas the discount is 3%, and without direct debit 2%.

@@ -1,0 +1,40 @@
+{
+  "data": {
+    "planId": "CAP002@VEC",
+    "displayName": "Easy EV",
+    "brandName": "Test Retailer",
+    "electricityContract": {
+      "tariffPeriod": [
+        {
+          "displayName": "All year",
+          "dailySupplyCharge": "1.35",
+          "rateBlockUType": "timeOfUseRates",
+          "timeOfUseRates": [
+            {
+              "type": "SHOULDER",
+              "rates": [{ "unitPrice": "0.59" }],
+              "timeOfUse": [{ "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "16:00", "endTime": "23:00" }]
+            },
+            {
+              "type": "SHOULDER",
+              "rates": [{ "unitPrice": "0.31" }],
+              "timeOfUse": [
+                { "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "06:00", "endTime": "11:00" },
+                { "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "14:00", "endTime": "16:00" },
+                { "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "23:00", "endTime": "00:00" }
+              ]
+            },
+            {
+              "type": "SHOULDER",
+              "rates": [{ "volume": 20, "unitPrice": "0.054545" }, { "unitPrice": "0.31" }],
+              "timeOfUse": [
+                { "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "11:00", "endTime": "14:00" },
+                { "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"], "startTime": "00:00", "endTime": "06:00" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

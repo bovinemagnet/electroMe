@@ -1,15 +1,14 @@
-# GloBird EasyEV, AusNet distribution zone.
-# Retailer fact sheet, retrieved 20 August 2026. GST inclusive.
+# GloBird "EASYEV" Residential (Flexible Rate), AusNet distribution zone.
+# Consumer Data Right register, plan GLO741889MR@VEC, retrieved 20 August 2026.
+# Rates converted from the register's GST-exclusive dollars: 1.35, 0.59, 0.31 and 0.054545,
+# each x 110 to give GST-inclusive cents.
 #
-# TODO: the window hours below are NOT confirmed against the fact sheet. The rates are
-# (6.0c capped off-peak, 34.1c off-peak balance and shoulder, 64.9c peak), but which hours
-# each window covers is taken from the plan's usual Victorian shape and must be checked
-# before any figure from this file is acted on.
-#
-# TODO: the 20 kWh per day cap is modelled as one cap per off-peak window, so the two windows
-# below each get their own 20 kWh. If the retailer publishes a single daily cap shared across
-# both, this file under-costs the plan. The tariff model has no way to express one cap spanning
-# two disjoint windows; confirm which it is.
+# KNOWN TO BE WRONG, and by how much. The register publishes a single 20 kWh daily allowance
+# covering BOTH the 00:00-06:00 and the 11:00-14:00 windows. A band in this model owns its own
+# allowance, so the two bands below each get 20 kWh and this file therefore under-costs the
+# plan on any day the household draws more than 20 kWh across the pair. The market harvester
+# refuses this plan outright for the same reason rather than map it this way; this file exists
+# so the plan can still be seen and compared, with the error stated.
 id: globird-easyev
 name: EasyEV
 retailer: GloBird
@@ -17,24 +16,24 @@ zone: AUSNET
 gstInclusive: true
 charges:
   - type: dailySupply
-    cents: 148.5
+    cents: 148.50
   - type: timeOfUse
     bands:
+      - { from: "16:00", to: "23:00", days: ALL, cents: 64.90 }
+      - { from: "06:00", to: "11:00", days: ALL, cents: 34.10 }
+      - { from: "14:00", to: "16:00", days: ALL, cents: 34.10 }
+      - { from: "23:00", to: "24:00", days: ALL, cents: 34.10 }
       - from: "00:00"
         to: "06:00"
         days: ALL
         reset: DAILY
         tiers:
-          - { upToKWh: 20, cents: 6.0 }
-          - { cents: 34.1 }
+          - { upToKWh: 20, cents: 6.00 }
+          - { cents: 34.10 }
       - from: "11:00"
         to: "14:00"
         days: ALL
         reset: DAILY
         tiers:
-          - { upToKWh: 20, cents: 6.0 }
-          - { cents: 34.1 }
-      - { from: "16:00", to: "21:00", days: ALL, cents: 64.9 }
-      - { from: "06:00", to: "11:00", days: ALL, cents: 34.1 }
-      - { from: "14:00", to: "16:00", days: ALL, cents: 34.1 }
-      - { from: "21:00", to: "24:00", days: ALL, cents: 34.1 }
+          - { upToKWh: 20, cents: 6.00 }
+          - { cents: 34.10 }
