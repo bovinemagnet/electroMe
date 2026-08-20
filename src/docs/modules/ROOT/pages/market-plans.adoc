@@ -30,14 +30,29 @@ A typical harvest of the AusNet network:
 |===
 | Retailers queried | 80
 | Plans published across all networks | 16,186
-| Residential electricity plans serving this network | 619
-| Mapped successfully | 619
-| Distinct tariffs after removing duplicates | 182
+| Plan responses cached for this network | 584
+| Mapped successfully | 574
+| Skipped, and named in the summary | 10
+| Network coverage | 98%
+| Distinct tariffs after removing duplicates | under 200
 | Time taken | under 30 seconds
 |===
 
 Responses are cached on disk and refetched only when the published plan changes, so a second
 harvest is close to instant.
+
+Not every published plan can be mapped. A plan whose rates cannot be read with confidence is
+refused rather than guessed at, and the harvest summary names every reason a plan was skipped, each
+with a count — not just the first few. A truncated list of gaps reads as a complete list of gaps,
+and refusing a plan is only better than mispricing it if you can see that it happened.
+
+Coverage is reported as one percentage: the share of this network's plans the tariff model could
+hold. A mapper that quietly reads a capped free-energy window as unlimited cheap power reports full
+coverage; one that refuses it reports less, and the lower figure is the honest one. Reading an
+earlier version's mapping of this same cache reported 583 mapped and 1 failed — full marks, and
+wrong. The ten now refused are six plans with a seasonal demand charge the model has no season for,
+three plans where a single capped allowance is shared across windows that do not adjoin, and one
+malformed response.
 
 [#duplicates]
 == Why deduplication matters
@@ -71,11 +86,42 @@ The published data gives no structured way to tell the two apart: every eligibil
 plan's own terms, not as a guarantee either way.
 ====
 
+== Charges read from a harvested plan
+
+Every charge type electroMe understands can come from a harvested plan, not only a hand-written
+one: capped and tiered time-of-use windows, demand charges, discounts and a controlled-load rate
+for a hot water circuit. See xref:tariff-reference.adoc[Tariff reference] for what each one means
+and how it prices your usage.
+
+A published time-of-use window is sometimes capped — free or heavily discounted for the first
+several kilowatt hours of the day, at the ordinary rate after — and sometimes split at midnight,
+because a time of day cannot say "until 11:00 tomorrow". Both are read as the single tariff they
+represent: a capped window keeps its one allowance regardless of how many rate rows or window
+entries the register used to publish it, and a window split at midnight is rejoined into the one
+overnight band it describes. Where a plan publishes one allowance shared across windows that do not
+adjoin, sharing the cap between two separate bands would hand the household the allowance twice —
+GloBird's EasyEV plan does this, capping the sum of an overnight and an afternoon window together —
+so the plan is refused rather than approximated.
+
+Demand charges, a controlled-load rate and proportional discounts are also read from the contract
+now. Reading only the first tariff period previously left a demand plan priced as an ordinary flat
+tariff with its largest single charge missing, and a household with a controlled circuit had that
+energy priced at the ordinary rate on every harvested plan. A demand charge is only mapped where it
+does not vary by season: every demand plan currently on the AusNet register publishes a summer rate
+and a winter one, and charging one of them all year is a different tariff rather than an
+approximation, so a seasonal demand charge is refused — see below for what discounts are and are
+not costed.
+
 == What is not modelled
 
 Discounts and credits::
-Conditional discounts, sign-up credits and referral bonuses are not applied. A plan's headline
-saving may improve on what is shown, or evaporate when a discount period ends.
+A discount published as a percentage off the whole bill is costed, with the retailer's own wording
+about what it requires recorded alongside — see xref:tariff-reference.adoc#discount[the discount
+charge type] for how a conditional total is marked. A fixed-amount, one-off sign-up credit is
+deliberately not costed: the model applies a fixed discount once per costing, so pricing a sign-up
+credit that way would subtract it from every year the household stays rather than only the first.
+Those are shown beside the plan instead, alongside fees — see
+xref:browsing-plans.adoc#fees[Fees and incentives].
 
 Fees::
 Membership, disconnection and payment-processing fees are not costed. They *are* read and shown
@@ -84,8 +130,9 @@ xref:browsing-plans.adoc#fees[Fees and incentives]. Costing them would mix GST b
 amounts are published inclusive while unit prices are exclusive.
 
 Seasonal tariffs::
-Where a plan publishes several seasonal periods, the first is used. The tariff model has no
-seasonal dimension, and mapping one period is honest where blending them would not be.
+Where a plan publishes several seasonal usage periods, the first is used — the tariff model has no
+seasonal dimension, and mapping one period is honest where blending them would not be. A seasonal
+*demand* charge is refused instead of picked from; see above.
 
 Price changes::
 Rates are what is published today. The feed gives no advance notice of changes.

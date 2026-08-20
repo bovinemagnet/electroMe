@@ -44,7 +44,7 @@ public class MarketResource {
                 market.harvested(),
                 market.zoneName(),
                 market.lastReport().map(r -> r.summary()).orElse(List.of()),
-                market.lastReport().map(r -> r.topSkipReasons(6)).orElse(List.of()),
+                market.lastReport().map(r -> r.skipReasons()).orElse(List.of()),
                 market.harvestError().orElse(null));
     }
 }

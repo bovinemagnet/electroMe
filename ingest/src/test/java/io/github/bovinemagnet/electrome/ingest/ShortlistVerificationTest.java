@@ -43,7 +43,7 @@ class ShortlistVerificationTest {
             "agl-night-saver-ev", "2812",
             "powershop-tou", "2853",
             "ovo-free-window", "2815",
-            "globird-4hr-free-pay-on-time", "2743"));
+            "globird-4hr-free", "2743"));
 
     private static Path householdData() {
         return Path.of(System.getProperty("electrome.usage.csv", "../MyUsageData_19-08-2026.csv"));

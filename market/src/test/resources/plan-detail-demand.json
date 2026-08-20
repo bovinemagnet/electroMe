@@ -1,0 +1,33 @@
+{
+  "data": {
+    "planId": "DEM001@VEC",
+    "displayName": "Demand Single Rate",
+    "brandName": "Test Retailer",
+    "electricityContract": {
+      "tariffPeriod": [
+        {
+          "displayName": "All year",
+          "dailySupplyCharge": "1.10",
+          "rateBlockUType": "singleRate",
+          "singleRate": { "rates": [{ "unitPrice": "0.295" }] }
+        },
+        {
+          "displayName": "Demand",
+          "rateBlockUType": "demandCharges",
+          "demandCharges": [
+            {
+              "days": ["MON","TUE","WED","THU","FRI","SAT","SUN"],
+              "amount": "0.3877",
+              "startTime": "15:00",
+              "endTime": "21:00",
+              "description": "Capacity Demand",
+              "displayName": "Demand",
+              "chargePeriod": "DAY",
+              "measurementPeriod": "DAY"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

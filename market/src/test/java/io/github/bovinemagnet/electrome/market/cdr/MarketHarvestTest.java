@@ -108,4 +108,29 @@ class MarketHarvestTest {
         assertThat(MarketHarvest.retainFor(surviving, collected, PlanExtras::isEmpty))
                 .containsOnlyKeys("B1");
     }
+
+    /**
+     * Every gap is reported, not the leading few.
+     *
+     * <p>A truncated list of what could not be priced reads as a complete one, and refusing a
+     * plan is only better than mispricing it if somebody can see that it was refused.
+     */
+    @org.junit.jupiter.api.Test
+    void reportsEveryReasonAPlanWasSkippedWithACount() {
+        var report = new HarvestReport(1, 10, 8, 5, 5,
+                java.util.List.of(
+                        "A@VEC: seasonal demand charges",
+                        "B@VEC: seasonal demand charges",
+                        "C@VEC: one capped rate covers 2 separate windows",
+                        "D@VEC: response is not valid JSON"),
+                java.time.Duration.ofSeconds(3));
+
+        assertThat(report.skipReasons()).containsExactly(
+                "2 x seasonal demand charges",
+                "1 x one capped rate covers 2 separate windows",
+                "1 x response is not valid JSON");
+        assertThat(report.coverage()).isEqualTo("63%");
+        assertThat(report.summary()).anySatisfy(
+                line -> assertThat(line).contains("63% of this network mapped"));
+    }
 }
