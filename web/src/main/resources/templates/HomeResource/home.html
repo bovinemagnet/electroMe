@@ -1,27 +1,5 @@
-<!DOCTYPE html>
-<html lang="en-AU">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>electroMe</title>
-  <link rel="stylesheet" href="/app.css">
-  <script src="/vendor/htmx.min.js" defer></script>
-  <script src="/vendor/echarts.min.js" defer></script>
-  <script src="/charts.js" defer></script>
-</head>
-<body>
-
-<div class="masthead">
-  <span class="wordmark">electro<span>Me</span></span>
-  <span class="meta">Which electricity plan actually costs you least</span>
-</div>
-
-{#if !loaded}
-<section class="notice error">
-  <h2>No usage data loaded</h2>
-  <p class="explain" style="margin:0">{loadError}</p>
-</section>
-{#else}
+{#include base}
+{#body}
 
 <form id="controls"
       hx-get="/fragments/dashboard"
@@ -30,27 +8,22 @@
       hx-swap="innerHTML"
       hx-indicator="#busy">
   <label>From
-    <input type="date" name="from" value="{windowFrom}" min="{availableFrom}" max="{availableTo}">
+    <input type="date" name="from" value="{shell.window.from}"
+           min="{shell.available.from}" max="{shell.available.to}">
   </label>
   <label>To
-    <input type="date" name="to" value="{windowTo}" min="{availableFrom}" max="{availableTo}">
+    <input type="date" name="to" value="{shell.window.to}"
+           min="{shell.available.from}" max="{shell.available.to}">
   </label>
   <button type="submit" class="primary">Update</button>
   <span id="busy" class="htmx-indicator">Costing&hellip;</span>
   <span class="spacer"></span>
   <span class="meta" style="font-size:12px; color:var(--muted)">
-    Data available {availableFrom} to {availableTo} &middot; {planCount} plans
+    Data available {shell.available.from} to {shell.available.to} &middot; {shell.planCount} plans
   </span>
 </form>
 
-{#if planErrors.size != 0}
-<section class="notice warning">
-  <h2>Some plans could not be loaded</h2>
-  <ul>{#for error in planErrors}<li>{error}</li>{/for}</ul>
-</section>
-{/if}
-
-<main id="dashboard"><p class="loading">Costing {planCount} plans against your usage&hellip;</p></main>
+<main id="dashboard"><p class="loading">Costing {shell.planCount} plans against your usage&hellip;</p></main>
 
 <section id="scenarios" hx-get="/fragments/scenarios" hx-trigger="load" hx-swap="innerHTML"></section>
 
@@ -66,6 +39,5 @@
           hx-swap="innerHTML">Reload plan files</button>
 </footer>
 
-{/if}
-</body>
-</html>
+{/body}
+{/include}

@@ -78,7 +78,10 @@ Conditional discounts, sign-up credits and referral bonuses are not applied. A p
 saving may improve on what is shown, or evaporate when a discount period ends.
 
 Fees::
-Membership, disconnection and payment-processing fees are not costed.
+Membership, disconnection and payment-processing fees are not costed. They *are* read and shown
+on a plan's detail panel, labelled as excluded — see
+xref:browsing-plans.adoc#fees[Fees and incentives]. Costing them would mix GST bases, because fee
+amounts are published inclusive while unit prices are exclusive.
 
 Seasonal tariffs::
 Where a plan publishes several seasonal periods, the first is used. The tariff model has no
@@ -95,5 +98,6 @@ longer be published — and is never silently replaced.
 
 == See also
 
+* xref:browsing-plans.adoc[Browsing plans] — finding your way around what the harvest returns.
 * xref:defining-a-plan.adoc[Defining a plan] — for the tariff you are on now.
 * xref:configuration.adoc[Configuration] — disabling harvesting, and where the cache lives.

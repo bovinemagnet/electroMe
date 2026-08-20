@@ -1,0 +1,14 @@
+id: solar-soak
+name: Solar Soak
+retailer: Epsilon Energy
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 105
+  - type: timeOfUse
+    bands:
+      - { from: "00:00", to: "10:00", days: ALL, cents: 22 }
+      - { from: "10:00", to: "16:00", days: ALL, cents: 8 }
+      - { from: "16:00", to: "21:00", days: ALL, cents: 52 }
+      - { from: "21:00", to: "24:00", days: ALL, cents: 22 }

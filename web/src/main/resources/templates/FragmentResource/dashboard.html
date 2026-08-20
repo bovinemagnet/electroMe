@@ -65,10 +65,12 @@
 {/let}
 
 <section class="panel">
-  <p class="eyebrow" style="margin-bottom:4px">What each plan would have cost</p>
+  <p class="eyebrow" style="margin-bottom:4px">Your shortlist</p>
   <p class="explain">
-    Your actual half-hourly consumption, priced by each tariff. Bars are stacked by charge
-    component, so you can see <em>where</em> the difference sits rather than only which plan wins.
+    Your own tariff, the cheapest plan you can actually sign up to, the cheapest that exists at
+    all, and the regulated benchmark &mdash; priced against your actual half-hourly consumption.
+    Bars are stacked by charge component, so you can see <em>where</em> the difference sits
+    rather than only which plan wins.
     A plan marked <span class="conditional">requirements</span> is only offered to households
     that own or join something &mdash; solar, a battery, an electric vehicle, a membership &mdash;
     so check you qualify before treating its saving as available. Hover the marker to read them.
@@ -84,7 +86,7 @@
         </tr>
       </thead>
       <tbody>
-      {#for row in dashboard.rows}
+      {#for row in dashboard.shortlist}
         <tr class="{#if row.result.cheapest}cheapest{/if}">
           <td>
             <div class="plan-name">{row.result.planName()}{#if row.result.cheapest}<span class="best-tag">BEST</span>{/if}</div>
@@ -116,6 +118,12 @@
     <span><span class="swatch" style="background:{entry.colour}"></span>{entry.label}</span>
   {/for}
   </div>
+
+  <p class="browse-all">
+    <a href="/plans?from={dashboard.range.from}&to={dashboard.range.to}">
+      {#if dashboard.editedDown()}Compare all {dashboard.rows.size} plans{#else}Browse and filter every plan{/if} &rarr;
+    </a>
+  </p>
 </section>
 
 <section class="panel">

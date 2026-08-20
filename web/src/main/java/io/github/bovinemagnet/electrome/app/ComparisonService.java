@@ -19,6 +19,17 @@ public class ComparisonService {
     @Inject UsageStore usageStore;
     @Inject PlanStore planStore;
 
+    /**
+     * Costs one plan, for a view that shows a single tariff in full.
+     *
+     * <p>The same engine and the same window as the comparison, so a detail panel can never
+     * disagree with the row a reader opened it from.
+     */
+    public io.github.bovinemagnet.electrome.core.cost.BillBreakdown cost(
+            io.github.bovinemagnet.electrome.core.tariff.Plan plan, DateRange range) {
+        return engine.cost(usageStore.usage(), plan, range);
+    }
+
     public Comparison compare(DateRange range) {
         return compare(range, usageStore.usage());
     }

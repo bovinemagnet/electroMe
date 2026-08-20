@@ -52,6 +52,8 @@ public final class BandPalette {
     public static String tokenFor(Plan plan, ChargeLine line) {
         return switch (line.kind()) {
             case SUPPLY -> SUPPLY;
+            // A separate circuit on its own arrangement, distinct from the usage bands.
+            case CONTROLLED -> OFFPEAK;
             case DEMAND -> PEAK;
             case FEED_IN, DISCOUNT -> CREDIT;
             case USAGE -> usageColour(plan, line);
@@ -66,18 +68,36 @@ public final class BandPalette {
         var band = bands.stream()
                 .filter(b -> ("Usage " + b.describe()).equals(line.label()))
                 .findFirst();
-        if (band.isPresent() && daytime(band.get())) {
+        if (band.isPresent()) {
+            return tokenFor(plan, band.get());
+        }
+        return rateColour(bands, line.rateCents());
+    }
+
+    /**
+     * The colour of one band of a plan.
+     *
+     * <p>Drawing a tariff directly, rather than colouring a bill line that came from it, needs
+     * the same decision from the same inputs — otherwise the detail view would teach a reader a
+     * second colour language that contradicts the dashboard.
+     */
+    public static String tokenFor(Plan plan, Band band) {
+        if (daytime(band)) {
             return MIDDAY;
         }
+        var bands = timeOfUseBands(plan);
+        return bands.isEmpty() ? SHOULDER : rateColour(bands, band.centsPerKWh());
+    }
 
+    private static String rateColour(List<Band> bands, BigDecimal rateCents) {
         BigDecimal dearest = bands.stream().map(Band::centsPerKWh)
                 .max(BigDecimal::compareTo).orElseThrow();
         BigDecimal cheapest = bands.stream().map(Band::centsPerKWh)
                 .min(BigDecimal::compareTo).orElseThrow();
-        if (line.rateCents().compareTo(dearest) == 0) {
+        if (rateCents.compareTo(dearest) == 0) {
             return PEAK;
         }
-        if (line.rateCents().compareTo(cheapest) == 0) {
+        if (rateCents.compareTo(cheapest) == 0) {
             return OFFPEAK;
         }
         return SHOULDER;

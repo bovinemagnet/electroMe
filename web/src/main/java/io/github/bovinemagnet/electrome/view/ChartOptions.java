@@ -2,6 +2,8 @@ package io.github.bovinemagnet.electrome.view;
 
 import io.github.bovinemagnet.electrome.app.LoadCurve;
 import io.github.bovinemagnet.electrome.app.UsageAnalysis;
+import io.github.bovinemagnet.electrome.core.domain.DateRange;
+import io.github.bovinemagnet.electrome.core.domain.UsageData;
 import io.github.bovinemagnet.electrome.core.tariff.Band;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import java.math.BigDecimal;
@@ -87,6 +89,128 @@ public final class ChartOptions {
                 "nameLocation", "middle", "nameTextStyle", Map.of("fontSize", 11)));
         option.put("series", series);
         return option;
+    }
+
+    /**
+     * Every selected plan's rate through the day, with the household's load curve behind it.
+     *
+     * <p>The same overlay the dashboard gives for one plan, extended to several. This is where a
+     * reader sees that one plan's cheap window sits exactly where their consumption is highest,
+     * which is the whole reason two households on the same tariff pay different effective rates.
+     *
+     * <p>Rates on the left axis, load on the right: they share an x-axis and nothing else, and
+     * plotting them on one scale would make the comparison meaningless.
+     */
+    public static Map<String, Object> rateShapes(
+            List<Plan> plans, UsageData usage, DateRange range) {
+
+        var series = new ArrayList<Map<String, Object>>();
+        for (int i = 0; i < plans.size(); i++) {
+            var entry = new LinkedHashMap<String, Object>();
+            entry.put("name", plans.get(i).name());
+            entry.put("type", "line");
+            entry.put("step", "end");
+            entry.put("showSymbol", false);
+            entry.put("yAxisIndex", 0);
+            entry.put("lineStyle", Map.of("width", 2.2));
+            entry.put("itemStyle", Map.of("color", seriesColour(i)));
+            entry.put("data", ratesByHalfHour(plans.get(i)));
+            series.add(entry);
+        }
+
+        var load = new LinkedHashMap<String, Object>();
+        load.put("name", "Your average draw");
+        load.put("type", "line");
+        load.put("smooth", 0.25);
+        load.put("showSymbol", false);
+        load.put("yAxisIndex", 1);
+        load.put("z", 1);
+        load.put("lineStyle", Map.of("width", 1.4, "opacity", 0.55));
+        load.put("areaStyle", Map.of("opacity", 0.10));
+        load.put("itemStyle", Map.of("color", BandPalette.chartRef("accent")));
+        load.put("data", averageDraw(usage, range));
+        series.add(load);
+
+        var option = new LinkedHashMap<String, Object>();
+        option.put("tooltip", Map.of("trigger", "axis"));
+        option.put("legend", Map.of("type", "scroll", "bottom", 0));
+        option.put("grid", Map.of("left", 56, "right", 56, "top", 30, "bottom", 54));
+        option.put("xAxis", Map.of(
+                "type", "category", "boundaryGap", false, "data", halfHourLabels(),
+                "axisLabel", Map.of("interval", 5)));
+        option.put("yAxis", List.of(
+                Map.of("type", "value", "name", "c/kWh", "nameGap", 38,
+                        "nameLocation", "middle", "nameTextStyle", Map.of("fontSize", 11)),
+                Map.of("type", "value", "name", "kW", "nameGap", 38, "position", "right",
+                        "nameLocation", "middle", "splitLine", Map.of("show", false),
+                        "nameTextStyle", Map.of("fontSize", 11))));
+        option.put("series", series);
+        return option;
+    }
+
+    /**
+     * A plan's rate in each half hour.
+     *
+     * <p>A plan with no time-of-use bands charges one rate all day, which is exactly what a
+     * flat line across the axis says. A slot no band covers is left null so the line breaks
+     * rather than dropping to zero and implying free electricity.
+     */
+    private static List<BigDecimal> ratesByHalfHour(Plan plan) {
+        var bands = BandPalette.timeOfUseBands(plan);
+        var rates = new ArrayList<BigDecimal>(48);
+
+        if (bands.isEmpty()) {
+            BigDecimal flat = null;
+            for (var charge : plan.charges()) {
+                if (charge instanceof io.github.bovinemagnet.electrome.core.tariff.FlatRate rate) {
+                    flat = rate.centsPerKWh();
+                } else if (charge
+                        instanceof io.github.bovinemagnet.electrome.core.tariff.Tiered tiered) {
+                    // The first block is what most households spend most of their time in.
+                    flat = tiered.tiers().get(0).centsPerKWh();
+                }
+            }
+            for (int slot = 0; slot < 48; slot++) {
+                rates.add(flat);
+            }
+            return rates;
+        }
+
+        for (int slot = 0; slot < 48; slot++) {
+            int minute = slot * 30;
+            BigDecimal rate = null;
+            for (var band : bands) {
+                if (band.matchesTime(minute)) {
+                    rate = band.centsPerKWh();
+                    break;
+                }
+            }
+            rates.add(rate);
+        }
+        return rates;
+    }
+
+    /** Mean power draw in each half hour across the window, in kW. */
+    private static List<BigDecimal> averageDraw(UsageData usage, DateRange range) {
+        var totals = new BigDecimal[48];
+        var counts = new int[48];
+        java.util.Arrays.fill(totals, BigDecimal.ZERO);
+
+        for (var reading : usage.consumption().slice(range).readings()) {
+            int slot = Math.min(47, reading.minuteOfDay() / 30);
+            totals[slot] = totals[slot].add(reading.averageKW());
+            counts[slot]++;
+        }
+
+        var curve = new ArrayList<BigDecimal>(48);
+        for (int slot = 0; slot < 48; slot++) {
+            curve.add(counts[slot] == 0
+                    ? BigDecimal.ZERO
+                    : totals[slot].divide(BigDecimal.valueOf(counts[slot]),
+                            java.math.MathContext.DECIMAL64)
+                            .setScale(3, java.math.RoundingMode.HALF_UP));
+        }
+        return curve;
     }
 
     private static String seriesColour(int index) {

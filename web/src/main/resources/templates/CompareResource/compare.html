@@ -1,0 +1,144 @@
+{#include base}
+{#body}
+
+<form id="controls" action="/compare" method="get">
+  <label>From
+    <input type="date" name="from" value="{shell.window.from}"
+           min="{shell.available.from}" max="{shell.available.to}">
+  </label>
+  <label>To
+    <input type="date" name="to" value="{shell.window.to}"
+           min="{shell.available.from}" max="{shell.available.to}">
+  </label>
+  {#if view}{#for plan in view.matrix.plans}<input type="hidden" name="plans" value="{plan.id()}">{/for}{/if}
+  <button type="submit" class="primary">Update</button>
+  <span class="spacer"></span>
+  <a class="button" href="{shell.link('/plans')}">Choose different plans</a>
+</form>
+
+{#if !view}
+<section class="panel">
+  <h2 style="margin-top:0; font-size:16px">Pick at least two plans</h2>
+  <p class="explain">
+    A comparison needs at least two plans and shows at most four. Below two there is nothing to
+    compare; above four the columns stop being readable, and the browser is the better tool.
+  </p>
+  {#if unknown.size != 0}
+  <p class="explain">
+    These identifiers matched no plan: {#for id in unknown}<code>{id}</code>{#if id_hasNext}, {/if}{/for}.
+  </p>
+  {/if}
+  <p style="margin:0">
+    <a class="button" href="{shell.link('/plans')}">Browse plans</a>
+  </p>
+</section>
+
+{#else}
+
+{#if view.hasProblems()}
+<section class="notice warning">
+  <h2>Not everything you asked for is shown</h2>
+  <ul>
+    {#for id in view.unknown}<li>No plan matched <code>{id}</code>.</li>{/for}
+    {#if view.surplus.size != 0}
+    <li>
+      A comparison shows at most four plans. Not shown:
+      {#for id in view.surplus}<code>{id}</code>{#if id_hasNext}, {/if}{/for}.
+      <a href="{shell.link('/plans')}">Browse all plans</a> to swap one in.
+    </li>
+    {/if}
+  </ul>
+</section>
+{/if}
+
+{!
+  The answer first. Everything below this panel is the evidence for it, and a reader who stops
+  here should not have missed anything they needed.
+!}
+<section class="panel verdict-list">
+  <p class="eyebrow" style="margin-bottom:9px">
+    Over {view.range.days()} days to {view.range.to}
+  </p>
+  <div style="display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:14px">
+    <span class="num figure">{money:dollars(view.winnerTotal())}</span>
+    <span style="font-size:15px; color:var(--muted)">on {view.winner().name()}, the cheapest of these</span>
+  </div>
+
+  {#for verdict in view.verdicts}
+  <div class="verdict-item">
+    <p class="verdict-sentence">{verdict.sentence()}</p>
+    <p class="verdict-robustness{#if verdict.marginal()} marginal{/if}">{verdict.robustness()}</p>
+  </div>
+  {/for}
+
+  <p class="explain" style="margin:12px 0 0">{view.verdicts.get(0).caveat()}</p>
+</section>
+
+{!
+  Rows are charge components rather than plans, because the useful reading is horizontal: which
+  plan wins on which part of the bill.
+!}
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">Where the difference comes from</p>
+  <p class="explain">
+    One row per charge component, using every component any of these plans has. A dash means the
+    plan has no such charge &mdash; an absence rather than a gap. The marked cell in each row is
+    the cheapest of the plans that carry it.
+  </p>
+  <div class="table-scroll">
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Component</th>
+          {#for plan in view.matrix.plans}
+          <th class="right{#if plan.id() == view.winner().id()} winner{/if}">
+            <span class="plan-name">{plan.name()}</span>
+            <span class="plan-sub">{plan.retailer()}</span>
+          </th>
+          {/for}
+        </tr>
+      </thead>
+      <tbody>
+      {#for row in view.matrix.rows}
+        <tr>
+          <td>{row.label()}</td>
+          {#for cell in row.cells}
+          <td class="right num{#if cell.cheapest} best-cell{/if}">
+            {#if cell.present}
+              {money:dollars(cell.cost)}
+              {#if cell.quantity.signum() != 0}<span class="cell-quantity">{money:count(cell.quantity)} {cell.unit}</span>{/if}
+            {#else}
+              <span class="absent" title="This plan has no such charge">&mdash;</span>
+            {/if}
+          </td>
+          {/for}
+        </tr>
+      {/for}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>Total</th>
+          {#for plan in view.matrix.plans}
+          <th class="right num{#if plan.id() == view.winner().id()} winner{/if}">{money:dollars(view.matrix.total(plan_index))}</th>
+          {/for}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">When each plan is expensive, and when you use power</p>
+  <p class="explain">
+    Each plan's rate through the day on the left axis, your average draw on the right. Where a
+    plan's cheap window sits under the high part of your curve is where it saves you money
+    &mdash; and that overlap, not the advertised rate, is why two households on one tariff pay
+    different effective rates.
+  </p>
+  <div class="chart" data-chart="{view.rateChart}"></div>
+</section>
+
+{/if}
+
+{/body}
+{/include}

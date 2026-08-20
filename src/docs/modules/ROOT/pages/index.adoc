@@ -25,6 +25,12 @@ Prices your real consumption against every tariff you define, ranks them cheapes
 breaks each bill into its components so you can see *where* the difference sits rather than only
 which plan wins.
 
+Say why, and how safely::
+Puts two to four tariffs side by side, attributes every dollar of the difference to a named charge
+component, and works out at what level of consumption the ranking would flip — so you know whether
+the answer is robust or marginal before you sign. See
+xref:comparing-plans.adoc[Comparing plans].
+
 Explain the bill::
 Charts your average load through the day with the tariff's price windows shaded behind it, so the
 overlap between when you use power and when it is expensive is visible at a glance. Also shows

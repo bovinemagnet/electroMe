@@ -1,0 +1,10 @@
+id: simple-flat
+name: Simple Flat
+retailer: Gamma Retail
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 110
+  - type: flatRate
+    cents: 30

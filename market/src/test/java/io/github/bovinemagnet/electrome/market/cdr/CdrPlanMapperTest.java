@@ -293,4 +293,88 @@ class CdrPlanMapperTest {
         assertThatThrownBy(() -> CdrPlanMapper.map("not json at all", DistributionZone.AUSNET))
                 .isInstanceOf(UnmappablePlanException.class);
     }
+
+    // ---------------------------------------------------------------------
+    // Fees and incentives.
+    //
+    // Display-only: they are shown beside a plan, never folded into the costed
+    // figures. Published fee amounts are GST inclusive while unit prices are
+    // exclusive, so mixing the two into the engine needs care this phase does
+    // not take.
+    // ---------------------------------------------------------------------
+
+    @Test
+    void readsFixedFeesWithTheirAmount() throws IOException {
+        var extras = CdrPlanMapper.extrasOf(fixture("plan-detail-tou.json"));
+
+        assertThat(extras.fees())
+                .anySatisfy(fee -> {
+                    assertThat(fee.type()).isEqualTo("DISCONNECTION");
+                    assertThat(fee.amount()).isEqualByComparingTo("52.00");
+                    assertThat(fee.percentOfBill()).isFalse();
+                    assertThat(fee.describe()).isEqualTo("$52.00");
+                });
+    }
+
+    @Test
+    void readsPercentOfBillFeesAsAPercentage() throws IOException {
+        var extras = CdrPlanMapper.extrasOf(fixture("plan-detail-tou.json"));
+
+        // Published as the fraction 0.0027, which is 0.27% of the bill. Rendering the raw
+        // fraction as a percentage would understate the fee by two orders of magnitude.
+        //
+        // One retailer publishes a separate card-processing fee per card type, so several
+        // entries share the CC_PROCESSING type. They are kept apart, not collapsed.
+        assertThat(extras.fees()).filteredOn(PlanFee::percentOfBill)
+                .extracting(PlanFee::describe)
+                .contains("0.27% of the bill", "0.65% of the bill");
+
+        assertThat(extras.fees())
+                .filteredOn(fee -> "CC_PROCESSING".equals(fee.type()))
+                .allSatisfy(fee -> {
+                    assertThat(fee.percentOfBill()).isTrue();
+                    assertThat(fee.amount()).isNull();
+                });
+    }
+
+    @Test
+    void readsIncentives() throws IOException {
+        var extras = CdrPlanMapper.extrasOf(fixture("plan-detail-tou.json"));
+
+        assertThat(extras.incentives()).singleElement().satisfies(incentive -> {
+            assertThat(incentive.displayName()).isEqualTo("Solar feed-in tariffs");
+            assertThat(incentive.category()).isEqualTo("OTHER");
+            assertThat(incentive.eligibility()).contains("26.5 cents per kWh");
+        });
+    }
+
+    @Test
+    void aPlanWithNoIncentivesHasNoneRatherThanNull() throws IOException {
+        var extras = CdrPlanMapper.extrasOf(fixture("plan-detail-standing.json"));
+
+        assertThat(extras.incentives()).isEmpty();
+        assertThat(extras.fees()).hasSize(2);
+        assertThat(extras.isEmpty()).isFalse();
+    }
+
+    @Test
+    void extrasOfMalformedJsonAreEmptyRatherThanAnError() {
+        // A detail panel must still render when this one optional block will not parse.
+        assertThat(CdrPlanMapper.extrasOf("not json").isEmpty()).isTrue();
+        assertThat(CdrPlanMapper.extrasOf("{\"data\": {}}").isEmpty()).isTrue();
+    }
+
+    @Test
+    void aFeeWithNeitherAmountNorRateIsDroppedRatherThanShownAsBlank() {
+        String json = """
+                {"data": {"electricityContract": {"fees": [
+                  {"type": "OTHER", "term": "FIXED", "description": "Vague"},
+                  {"type": "EXIT", "term": "FIXED", "amount": "22.00", "description": "Exit"}
+                ]}}}
+                """;
+
+        assertThat(CdrPlanMapper.extrasOf(json).fees())
+                .singleElement()
+                .satisfies(fee -> assertThat(fee.type()).isEqualTo("EXIT"));
+    }
 }

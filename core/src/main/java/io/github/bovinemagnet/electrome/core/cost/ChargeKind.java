@@ -4,6 +4,8 @@ package io.github.bovinemagnet.electrome.core.cost;
 public enum ChargeKind {
     SUPPLY,
     USAGE,
+    /** Energy on a separate controlled circuit, priced at its own rate. */
+    CONTROLLED,
     DEMAND,
     FEED_IN,
     DISCOUNT

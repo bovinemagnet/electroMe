@@ -8,7 +8,8 @@ package io.github.bovinemagnet.electrome.core.tariff;
  * rather than a silently wrong bill.
  */
 public sealed interface Charge
-        permits DailySupply, FlatRate, TimeOfUse, Tiered, Demand, SolarFeedIn, Discount {
+        permits DailySupply, FlatRate, TimeOfUse, Tiered, Demand, SolarFeedIn, Discount,
+                ControlledLoad {
 
     /** Human-readable name for the resulting bill line. */
     String label();

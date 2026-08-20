@@ -108,6 +108,31 @@ figure in the data-quality panel before assuming one suits you — a single unus
 demand charge for a whole month.
 ====
 
+=== controlledLoad
+
+A separate, cheaper rate for energy on a controlled circuit — hot water, most often.
+
+[source,yaml]
+----
+- type: controlledLoad
+  cents: 12.10
+  from: "23:00"   # optional: when the retailer energises the circuit
+  to: "07:00"     # optional: both or neither
+----
+
+State both `from` and `to`, or neither. Neither means the circuit is energised all day, which is
+how a plan that publishes no window behaves. A window may run past midnight.
+
+Energy on the controlled circuit is read from a separate register in your interval file and is
+never priced by the ordinary usage bands. Two rules follow, and both matter:
+
+* A plan with *no* `controlledLoad` charge still charges for that energy, at its ordinary rate.
+  A household with a controlled circuit still uses the energy, and leaving it unpriced would make
+  every such plan look artificially cheap.
+* Energy falling *outside* a stated window is likewise priced as ordinary consumption.
+
+See xref:what-if.adoc#controlled-load[Hot water and the controlled circuit].
+
 === solarFeedIn
 
 A credit per kilowatt hour exported. Contributes a negative amount to the bill.

@@ -1,0 +1,14 @@
+# A block tariff, so the crossover has to abandon its closed form.
+id: block-tariff
+name: Block Tariff
+retailer: Delta Energy
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 100
+  - type: tiered
+    reset: QUARTERLY
+    tiers:
+      - { upToKWh: 500, cents: 24 }
+      - { cents: 38 }

@@ -1,0 +1,12 @@
+# Dearer to be connected AND dearer per unit than Simple Flat, so it loses at every
+# level of use. The pair exists to exercise the no-crossover finding.
+id: worse-everywhere
+name: Worse Everywhere
+retailer: Omega Energy
+zone: AUSNET
+gstInclusive: true
+charges:
+  - type: dailySupply
+    cents: 150
+  - type: flatRate
+    cents: 36

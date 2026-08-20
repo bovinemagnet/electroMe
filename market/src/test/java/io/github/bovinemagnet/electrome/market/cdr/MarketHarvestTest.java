@@ -73,4 +73,39 @@ class MarketHarvestTest {
                 .containsExactly("2 x no electricityContract",
                         "1 x unrepresentable day selection: WED");
     }
+
+    // ---------------------------------------------------------------------
+    // Metadata read alongside the tariff — eligibility conditions, fees and
+    // incentives — is collected per plan identifier while mapping, before
+    // deduplication has decided which identifiers survive.
+    // ---------------------------------------------------------------------
+
+    @Test
+    void keepsMetadataOnlyForThePlansThatSurvivedDeduplication() {
+        var surviving = List.of(plan("A1", "Origin", "128.24", "31.98"));
+        var collected = java.util.Map.of(
+                "A1", List.of("Requires solar"),
+                "A2", List.of("Requires a battery"));
+
+        // A2 was collapsed into A1. Carrying its conditions forward would attach a requirement
+        // to a plan that does not have one.
+        assertThat(MarketHarvest.retainFor(surviving, collected))
+                .containsOnlyKeys("A1");
+    }
+
+    @Test
+    void dropsEmptyMetadataRatherThanKeepingAnEmptyEntry() {
+        var surviving = List.of(
+                plan("A1", "Origin", "128.24", "31.98"),
+                plan("B1", "AGL", "110.00", "29.50"));
+        var collected = java.util.Map.of(
+                "A1", PlanExtras.none(),
+                "B1", new PlanExtras(
+                        List.of(new PlanFee("EXIT", "FIXED", new BigDecimal("22.00"), null, "")),
+                        List.of()));
+
+        // "Has no fees" and "carries an empty fee list" must not render differently.
+        assertThat(MarketHarvest.retainFor(surviving, collected, PlanExtras::isEmpty))
+                .containsOnlyKeys("B1");
+    }
 }
