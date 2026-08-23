@@ -55,6 +55,10 @@ public final class BandPalette {
             // A separate circuit on its own arrangement, distinct from the usage bands.
             case CONTROLLED -> OFFPEAK;
             case DEMAND -> PEAK;
+            // A fixed charge per day that consumption does not move, which is what the supply
+            // token means in this vocabulary. The bill line carries the retailer's own name for
+            // it, so the two are told apart by the legend rather than by hue.
+            case MEMBERSHIP -> SUPPLY;
             case FEED_IN, DISCOUNT -> CREDIT;
             case USAGE -> usageColour(plan, line);
         };

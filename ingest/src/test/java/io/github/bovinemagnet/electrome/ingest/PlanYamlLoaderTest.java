@@ -11,6 +11,7 @@ import io.github.bovinemagnet.electrome.core.tariff.DistributionZone;
 import io.github.bovinemagnet.electrome.core.tariff.InvalidPlanException;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import io.github.bovinemagnet.electrome.core.tariff.ResetPeriod;
+import io.github.bovinemagnet.electrome.core.tariff.SolarFeedIn;
 import io.github.bovinemagnet.electrome.core.tariff.TimeOfUse;
 import java.math.BigDecimal;
 import java.nio.file.Path;
@@ -360,5 +361,91 @@ class PlanYamlLoaderTest {
         var shipped = PlanYamlLoader.loadDirectory(Path.of("..", "plans"));
         assertThat(shipped).isNotEmpty();
         assertThat(shipped).allSatisfy(p -> assertThat(p.charges()).isNotEmpty());
+    }
+
+    // ---------- feed-in credits, exactly as the tariff reference documents them ----------
+
+    /** The banded example printed in tariff-reference.adoc must load, or the page is wrong. */
+    @Test
+    void loadsTheDocumentedBandedFeedIn() {
+        var plan = PlanYamlLoader.load("""
+                id: banded-feed-in
+                name: Banded feed in
+                retailer: Test
+                zone: AUSNET
+                gstInclusive: true
+                charges:
+                  - type: flatRate
+                    cents: 30.0
+                  - type: solarFeedIn
+                    bands:
+                      - { from: "00:00", to: "10:00", days: ALL, cents: 3.85 }
+                      - { from: "10:00", to: "14:00", days: ALL, cents: 1.65 }
+                      - { from: "14:00", to: "16:00", days: ALL, cents: 3.85 }
+                      - { from: "16:00", to: "21:00", days: ALL, cents: 11.0 }
+                      - { from: "21:00", to: "24:00", days: ALL, cents: 3.85 }
+                """);
+
+        var feedIn = plan.charges().stream()
+                .filter(SolarFeedIn.class::isInstance).map(SolarFeedIn.class::cast)
+                .findFirst().orElseThrow();
+        assertThat(feedIn.bands()).hasSize(5);
+        assertThat(feedIn.bestRate()).isEqualByComparingTo("11.0");
+        assertThat(feedIn.lowestRate()).isEqualByComparingTo("1.65");
+        assertThat(feedIn.varies()).isTrue();
+    }
+
+    /** The capped example printed in tariff-reference.adoc, likewise. */
+    @Test
+    void loadsTheDocumentedCappedFeedIn() {
+        var plan = PlanYamlLoader.load("""
+                id: capped-feed-in
+                name: Capped feed in
+                retailer: Test
+                zone: AUSNET
+                gstInclusive: true
+                charges:
+                  - type: flatRate
+                    cents: 30.0
+                  - type: solarFeedIn
+                    bands:
+                      - { from: "00:00", to: "17:30", days: ALL, cents: 0 }
+                      - from: "17:30"
+                        to: "21:30"
+                        days: ALL
+                        reset: DAILY
+                        tiers:
+                          - { upToKWh: 15, cents: 18.7 }
+                          - { cents: 2.2 }
+                      - { from: "21:30", to: "24:00", days: ALL, cents: 0 }
+                """);
+
+        var feedIn = plan.charges().stream()
+                .filter(SolarFeedIn.class::isInstance).map(SolarFeedIn.class::cast)
+                .findFirst().orElseThrow();
+        assertThat(feedIn.capped()).isTrue();
+        assertThat(feedIn.bestRate()).isEqualByComparingTo("18.7");
+        assertThat(feedIn.lowestRate()).isEqualByComparingTo("0");
+    }
+
+    /** Both forms at once has no single meaning, so it is refused rather than resolved. */
+    @Test
+    void rejectsAFeedInDeclaringBothCentsAndBands() {
+        assertThatThrownBy(() -> PlanYamlLoader.load("""
+                id: both
+                name: Both
+                retailer: Test
+                zone: AUSNET
+                gstInclusive: true
+                charges:
+                  - type: flatRate
+                    cents: 30.0
+                  - type: solarFeedIn
+                    cents: 3.3
+                    bands:
+                      - { from: "00:00", to: "24:00", days: ALL, cents: 3.3 }
+                """))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("exactly one of cents or bands");
     }
 }

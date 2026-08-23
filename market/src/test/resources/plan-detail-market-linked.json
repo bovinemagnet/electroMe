@@ -1,0 +1,37 @@
+{
+  "data": {
+    "planId": "WHO000001@VEC",
+    "displayName": "Wholesale Plan",
+    "brandName": "Test Wholesale Retailer",
+    "fuelType": "ELECTRICITY",
+    "customerType": "RESIDENTIAL",
+    "geography": { "distributors": ["AusNet Services (electricity)"] },
+    "electricityContract": {
+      "pricingModel": "SINGLE_RATE",
+      "variation": "Prices are not fixed. All usage is charged at the same wholesale electricity costs that are charged to us. Prices are determined by a range of factors, including government rebates, network fees and wholesale market costs.",
+      "terms": "The rate listed is for illustrative purposes only and assumes a flat rate network tariff.",
+      "fees": [
+        {
+          "term": "FIXED",
+          "type": "MEMBERSHIP",
+          "amount": "300.00",
+          "description": "Membership of $25 per month (inc. GST) to access these wholesale rates."
+        }
+      ],
+      "tariffPeriod": [
+        {
+          "startDate": "01-01",
+          "endDate": "12-31",
+          "dailySupplyCharge": "0.537905",
+          "rateBlockUType": "singleRate",
+          "singleRate": {
+            "displayName": "Single Rate",
+            "description": "All day",
+            "period": "P1D",
+            "rates": [{ "unitPrice": "0.40209812" }]
+          }
+        }
+      ]
+    }
+  }
+}

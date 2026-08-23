@@ -8,5 +8,7 @@ public enum ChargeKind {
     CONTROLLED,
     DEMAND,
     FEED_IN,
+    /** A recurring fee that must be paid to be on the plan, irrespective of consumption. */
+    MEMBERSHIP,
     DISCOUNT
 }

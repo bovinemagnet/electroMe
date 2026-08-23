@@ -53,10 +53,15 @@ Dependencies run one way: `core` ← `ingest`/`market` ← `web`.
 ## Architecture notes that matter
 
 **`Charge` is a sealed interface** (`DailySupply`, `FlatRate`, `TimeOfUse`, `Tiered`, `Demand`,
-`SolarFeedIn`, `Discount`). `CostingEngine.cost` switches over it with no default branch, so
-adding a charge kind is a compile error until the engine costs it. Adding a charge kind means
-touching: the sealed permits clause, `CostingEngine`, `PlanYamlLoader`, `PlanValidator`,
-`CdrPlanMapper`, and `tariff-reference.adoc`.
+`SolarFeedIn`, `Discount`, `ControlledLoad`, `Membership`). `CostingEngine.cost` switches over it
+with no default branch, so adding a charge kind is a compile error until the engine costs it.
+Adding a charge kind means touching: the sealed permits clause, `CostingEngine`, `PlanYamlLoader`,
+`PlanYamlWriter`, `PlanValidator`, `CdrPlanMapper`, and `tariff-reference.adoc`.
+
+**Published fee amounts already include GST; `unitPrice` does not.** Only a `Membership` — a fee
+that must be paid to be on the plan at all — is costed. Every other published fee describes what
+the household does rather than what the tariff charges, so costing them would bill a reader for
+behaviour they have not got.
 
 **`Scenario` is likewise sealed** (`LoadShift`, `AddSolar`, `AddBattery`) and is a *pure
 transformation of a usage series*. Scenarios are then costed by the unchanged `CostingEngine`, so
@@ -111,5 +116,11 @@ Antora sources live in `src/docs` (component `electrome`, single ROOT module). N
 `nav.adoc` entry. Build and check with `gradle21w antora`; output lands in `build/docs/site`.
 Mermaid diagrams are externalised into an `examples` directory rather than inlined.
 
-`plans/*.yaml` are live tariff definitions the user maintains, not fixtures. `design-market/`,
-`design-phase2/` and `docs/superpowers/` are untracked working artefacts.
+`plans/*.yaml` are live tariff definitions the user maintains, not fixtures. The Market screen
+also *writes* there, which is only safe because of one rule in `PlanLibrary`: a file carrying a
+`source:` block was written from the register and may be replaced, and a file without one was
+written by hand and never is. Its own files are found by published plan identifier rather than by
+name, so a file the user has renamed is still the one updated rather than duplicated.
+
+`design-market/`, `design-phase2/`, `design-save-plans/` and `docs/superpowers/` are untracked
+working artefacts.

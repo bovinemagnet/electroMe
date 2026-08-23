@@ -12,6 +12,7 @@ import io.github.bovinemagnet.electrome.core.tariff.Demand;
 import io.github.bovinemagnet.electrome.core.tariff.Discount;
 import io.github.bovinemagnet.electrome.core.tariff.DiscountBasis;
 import io.github.bovinemagnet.electrome.core.tariff.FlatRate;
+import io.github.bovinemagnet.electrome.core.tariff.Membership;
 import io.github.bovinemagnet.electrome.core.tariff.HolidayCalendar;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import io.github.bovinemagnet.electrome.core.tariff.SolarFeedIn;
@@ -75,9 +76,10 @@ public final class CostingEngine {
                 case TimeOfUse c -> lines.addAll(timeOfUseLines(c, consumption, uncovered));
                 case Tiered c -> lines.addAll(tieredLines(c, consumption));
                 case Demand c -> lines.add(demandLine(c, consumption));
-                case SolarFeedIn c -> lines.add(feedInLine(c, export));
+                case SolarFeedIn c -> lines.addAll(feedInLines(c, export));
                 case Discount c -> discounts.add(c);
                 case ControlledLoad c -> lines.add(controlledLine(c, controlled, consumption));
+                case Membership c -> lines.add(membershipLine(c, consumption));
             }
         }
 
@@ -149,6 +151,21 @@ public final class CostingEngine {
         all.addAll(first.readings());
         all.addAll(second.readings());
         return UsageSeries.of(all);
+    }
+
+    /**
+     * A recurring fee charged for being on the plan, priced over the days billed.
+     *
+     * <p>Shaped exactly like the supply charge because it behaves exactly like one: a fixed
+     * amount per day that consumption does not change. It gets its own bill line and its own
+     * kind rather than being folded into supply, because a reader comparing daily supply
+     * charges across plans is asking what the network costs, not what the retailer charges for
+     * membership.
+     */
+    private ChargeLine membershipLine(Membership charge, UsageSeries consumption) {
+        var days = BigDecimal.valueOf(consumption.billingDays().size());
+        return new ChargeLine(charge.label(), ChargeKind.MEMBERSHIP, days, Unit.DAY,
+                charge.centsPerDay(), dollars(days.multiply(charge.centsPerDay())));
     }
 
     private ChargeLine flatLine(FlatRate charge, UsageSeries consumption) {
@@ -321,10 +338,68 @@ public final class CostingEngine {
                 charge.centsPerKWPerDay(), dollars(cost));
     }
 
-    private ChargeLine feedInLine(SolarFeedIn charge, UsageSeries export) {
-        var kWh = export.totalKWh();
-        return new ChargeLine(charge.label(), ChargeKind.FEED_IN, kWh, Unit.KWH,
-                charge.centsPerKWh(), dollars(kWh.multiply(charge.centsPerKWh())).negate());
+    /**
+     * One credit line per band the plan pays a different rate in.
+     *
+     * <p>A flat credit is one band covering the whole day, so it still produces the single line
+     * it always did. A banded one produces a line each, because a household that exports at
+     * midday and one that exports at six o'clock earn different amounts from the same tariff,
+     * and a single blended figure would hide which of the two they are.
+     *
+     * <p>Blocks accumulate through the same {@link #allocate} consumption uses. A capped credit
+     * — seventeen cents for the first fifteen kilowatt hours a day, two cents after — is the
+     * same arithmetic as a capped usage window with the sign reversed, and sharing the code is
+     * what stops the two drifting apart.
+     */
+    private List<ChargeLine> feedInLines(SolarFeedIn charge, UsageSeries export) {
+        var perTier = new LinkedHashMap<Band, BigDecimal[]>();
+        var accumulated = new LinkedHashMap<Band, Map<Object, BigDecimal>>();
+        for (var band : charge.bands()) {
+            var kWh = new BigDecimal[band.tiers().size()];
+            Arrays.fill(kWh, BigDecimal.ZERO);
+            perTier.put(band, kWh);
+            accumulated.put(band, new HashMap<Object, BigDecimal>());
+        }
+
+        for (var reading : export.readings()) {
+            for (var band : charge.bands()) {
+                if (band.matches(reading, holidays)) {
+                    allocate(band, reading, perTier.get(band), accumulated.get(band));
+                    break;
+                }
+            }
+            // Export in no band earns nothing. The validator requires feed-in bands to cover
+            // every minute, so reaching here means a plan got past validation.
+        }
+
+        var lines = new ArrayList<ChargeLine>();
+        for (var entry : perTier.entrySet()) {
+            var band = entry.getKey();
+            var kWhPerTier = entry.getValue();
+            for (int i = 0; i < band.tiers().size(); i++) {
+                var tier = band.tiers().get(i);
+                var kWh = kWhPerTier[i];
+                lines.add(new ChargeLine(feedInLabel(charge, band, tier), ChargeKind.FEED_IN,
+                        kWh, Unit.KWH, tier.centsPerKWh(),
+                        dollars(kWh.multiply(tier.centsPerKWh())).negate()));
+            }
+        }
+        return lines;
+    }
+
+    /**
+     * A flat credit keeps its plain name; a banded one names the window, and a capped one names
+     * the allowance it runs out at.
+     */
+    private static String feedInLabel(SolarFeedIn charge, Band band, Tier tier) {
+        String name = charge.flat() ? charge.label() : charge.label() + " " + band.describe();
+        if (!band.capped()) {
+            return name;
+        }
+        return tier.unbounded()
+                ? name + " balance"
+                : name + " to " + tier.thresholdKWh().stripTrailingZeros().toPlainString()
+                        + " kWh";
     }
 
     private List<ChargeLine> discountLines(List<Discount> discounts, List<ChargeLine> priced) {

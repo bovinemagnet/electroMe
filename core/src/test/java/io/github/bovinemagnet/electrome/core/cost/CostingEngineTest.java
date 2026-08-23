@@ -18,6 +18,7 @@ import io.github.bovinemagnet.electrome.core.tariff.DiscountBasis;
 import io.github.bovinemagnet.electrome.core.tariff.DiscountScope;
 import io.github.bovinemagnet.electrome.core.tariff.DistributionZone;
 import io.github.bovinemagnet.electrome.core.tariff.FlatRate;
+import io.github.bovinemagnet.electrome.core.tariff.Membership;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import io.github.bovinemagnet.electrome.core.tariff.ResetPeriod;
 import io.github.bovinemagnet.electrome.core.tariff.SolarFeedIn;
@@ -284,6 +285,139 @@ class CostingEngineTest {
                 new SolarFeedIn(new BigDecimal("3.3")));
         var bill = ENGINE.cost(usage, plan, on(JAN1));
         assertThat(bill.subtotal(ChargeKind.FEED_IN)).isEqualByComparingTo("-0.33");
+    }
+
+    /**
+     * A credit that changes across the day pays by when the energy left, not by how much did.
+     *
+     * <p>Ten kilowatt hours exported between ten and three earns the midday rate; the same ten
+     * exported at six earns the evening one. A flat credit cannot tell the two households apart
+     * and sixty-six published plans price them very differently.
+     */
+    @Test
+    void creditsEachExportAtTheRateOfTheWindowItLeftIn() {
+        var usage = new UsageData(day(JAN1, "1").consumption(),
+                UsageSeries.of(exportOf(JAN1, 10 * 60, 12 * 60, BigDecimal.ONE)));
+        var midday = planOf(new DailySupply(BigDecimal.ZERO), new FlatRate(BigDecimal.ZERO),
+                eveningWeighted());
+
+        // Four half hours from 10:00, one kWh each, all inside the 1.65c midday window.
+        assertThat(ENGINE.cost(usage, midday, on(JAN1)).subtotal(ChargeKind.FEED_IN))
+                .isEqualByComparingTo("-0.066");
+
+        var evening = new UsageData(day(JAN1, "1").consumption(),
+                UsageSeries.of(exportOf(JAN1, 17 * 60, 19 * 60, BigDecimal.ONE)));
+        assertThat(ENGINE.cost(evening, midday, on(JAN1)).subtotal(ChargeKind.FEED_IN))
+                .isEqualByComparingTo("-0.44");
+    }
+
+    /**
+     * A capped credit stops paying the headline rate once the allowance is spent.
+     *
+     * <p>Flow Power's shape: a generous evening rate for the first so many kilowatt hours a day,
+     * a token rate after. Crediting every unit at the headline would overstate what a large
+     * array earns by several times.
+     */
+    @Test
+    void stopsPayingTheHeadlineRateOnceTheDailyAllowanceIsSpent() {
+        var capped = new SolarFeedIn(List.of(
+                Band.parse("00:00", "17:30", DaySelector.ALL, BigDecimal.ZERO),
+                Band.parseTiered("17:30", "21:30", DaySelector.ALL, ResetPeriod.DAILY,
+                        List.of(new Tier(new BigDecimal("3"), new BigDecimal("10.00")),
+                                new Tier(null, new BigDecimal("1.00")))),
+                Band.parse("21:30", "24:00", DaySelector.ALL, BigDecimal.ZERO)));
+        var plan = planOf(new DailySupply(BigDecimal.ZERO), new FlatRate(BigDecimal.ZERO), capped);
+
+        // Five kWh exported from 17:30: three at 10c, two at 1c.
+        var usage = new UsageData(day(JAN1, "1").consumption(),
+                UsageSeries.of(exportOf(JAN1, 17 * 60 + 30, 20 * 60, BigDecimal.ONE)));
+
+        assertThat(ENGINE.cost(usage, plan, on(JAN1)).subtotal(ChargeKind.FEED_IN))
+                .isEqualByComparingTo("-0.32");
+    }
+
+    /** The allowance is daily, so a second day starts again at the headline rate. */
+    @Test
+    void refillsTheAllowanceEachDay() {
+        var capped = new SolarFeedIn(List.of(
+                Band.parse("00:00", "17:30", DaySelector.ALL, BigDecimal.ZERO),
+                Band.parseTiered("17:30", "21:30", DaySelector.ALL, ResetPeriod.DAILY,
+                        List.of(new Tier(new BigDecimal("3"), new BigDecimal("10.00")),
+                                new Tier(null, new BigDecimal("1.00")))),
+                Band.parse("21:30", "24:00", DaySelector.ALL, BigDecimal.ZERO)));
+        var plan = planOf(new DailySupply(BigDecimal.ZERO), new FlatRate(BigDecimal.ZERO), capped);
+
+        var readings = new ArrayList<IntervalReading>();
+        readings.addAll(exportOf(JAN1, 17 * 60 + 30, 19 * 60, BigDecimal.ONE));
+        readings.addAll(exportOf(JAN1.plusDays(1), 17 * 60 + 30, 19 * 60, BigDecimal.ONE));
+        var consumption = new ArrayList<IntervalReading>();
+        consumption.addAll(day(JAN1, "1").consumption().readings());
+        consumption.addAll(day(JAN1.plusDays(1), "1").consumption().readings());
+        var usage = new UsageData(UsageSeries.of(consumption), UsageSeries.of(readings));
+
+        // Three kWh each day, every one of them inside that day's allowance.
+        assertThat(ENGINE.cost(usage, plan, new DateRange(JAN1, JAN1.plusDays(1)))
+                .subtotal(ChargeKind.FEED_IN)).isEqualByComparingTo("-0.60");
+    }
+
+    private static List<IntervalReading> exportOf(
+            java.time.LocalDate date, int fromMinute, int toMinute, BigDecimal kWh) {
+        var readings = new ArrayList<IntervalReading>();
+        for (int minute = fromMinute; minute < toMinute; minute += 30) {
+            readings.add(new IntervalReading(date.atStartOfDay().plusMinutes(minute),
+                    Duration.ofMinutes(30), kWh, Quality.ACTUAL));
+        }
+        return readings;
+    }
+
+    /** The Energy Locals shape: eleven cents at six o'clock, under two at noon. */
+    private static SolarFeedIn eveningWeighted() {
+        return new SolarFeedIn(List.of(
+                Band.parse("00:00", "10:00", DaySelector.ALL, new BigDecimal("3.85")),
+                Band.parse("10:00", "14:00", DaySelector.ALL, new BigDecimal("1.65")),
+                Band.parse("14:00", "16:00", DaySelector.ALL, new BigDecimal("3.85")),
+                Band.parse("16:00", "21:00", DaySelector.ALL, new BigDecimal("11.00")),
+                Band.parse("21:00", "24:00", DaySelector.ALL, new BigDecimal("3.85"))));
+    }
+
+    /**
+     * A mandatory membership is billed by the day, so a short window is charged a short window's
+     * worth rather than the whole year.
+     */
+    @Test
+    void chargesAMembershipByTheDayItCovers() {
+        var plan = planOf(new DailySupply(BigDecimal.ZERO), new FlatRate(BigDecimal.ZERO),
+                Membership.perYear("Membership fee", new BigDecimal("365.00")));
+
+        var bill = ENGINE.cost(day(JAN1, "1"), plan, on(JAN1));
+
+        // A dollar a day, one day billed.
+        assertThat(bill.subtotal(ChargeKind.MEMBERSHIP)).isEqualByComparingTo("1.00");
+    }
+
+    /** It is charged whether or not the household uses anything, which is the point of it. */
+    @Test
+    void chargesAMembershipEvenWithNoConsumption() {
+        var plan = planOf(new DailySupply(BigDecimal.ZERO), new FlatRate(new BigDecimal("30")),
+                Membership.perYear("Membership fee", new BigDecimal("365.00")));
+
+        var bill = ENGINE.cost(day(JAN1, "0"), plan, on(JAN1));
+
+        assertThat(bill.subtotal(ChargeKind.MEMBERSHIP)).isEqualByComparingTo("1.00");
+    }
+
+    /** It sits in the total, which is the whole reason for costing it at all. */
+    @Test
+    void includesTheMembershipInTheBillTotal() {
+        var without = planOf(new DailySupply(new BigDecimal("100")),
+                new FlatRate(BigDecimal.ZERO));
+        var with = planOf(new DailySupply(new BigDecimal("100")), new FlatRate(BigDecimal.ZERO),
+                Membership.perYear("Membership fee", new BigDecimal("365.00")));
+
+        var gap = ENGINE.cost(day(JAN1, "1"), with, on(JAN1)).total()
+                .subtract(ENGINE.cost(day(JAN1, "1"), without, on(JAN1)).total());
+
+        assertThat(gap).isEqualByComparingTo("1.00");
     }
 
     @Test

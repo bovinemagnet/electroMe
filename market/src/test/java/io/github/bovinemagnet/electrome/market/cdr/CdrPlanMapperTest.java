@@ -129,7 +129,8 @@ class CdrPlanMapperTest {
                 """;
         var feedIn = (SolarFeedIn) CdrPlanMapper.map(json, DistributionZone.AUSNET).charges()
                 .stream().filter(SolarFeedIn.class::isInstance).findFirst().orElseThrow();
-        assertThat(feedIn.centsPerKWh()).isEqualByComparingTo("1.10");
+        assertThat(feedIn.flat()).isTrue();
+        assertThat(feedIn.bestRate()).isEqualByComparingTo("1.10");
     }
 
     @Test

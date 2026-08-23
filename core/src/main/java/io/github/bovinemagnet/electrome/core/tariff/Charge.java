@@ -9,7 +9,7 @@ package io.github.bovinemagnet.electrome.core.tariff;
  */
 public sealed interface Charge
         permits DailySupply, FlatRate, TimeOfUse, Tiered, Demand, SolarFeedIn, Discount,
-                ControlledLoad {
+                ControlledLoad, Membership {
 
     /** Human-readable name for the resulting bill line. */
     String label();

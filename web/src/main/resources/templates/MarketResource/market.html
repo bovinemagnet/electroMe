@@ -1,49 +1,163 @@
+{#include base}
+{#body}
+
 <section class="panel">
-  <p class="eyebrow" style="margin-bottom:4px">Plans from the market</p>
+  <p class="eyebrow" style="margin-bottom:4px">From the Consumer Data Right</p>
 
   {#if !enabled}
   <p class="explain" style="margin:0">
-    Market harvesting is disabled. Only your local plan files are being compared.
+    Market harvesting is disabled by configuration, so there is nothing to browse. Only the plan
+    files you have written yourself are being compared.
   </p>
+
   {#else}
   <p class="explain">
-    Fetches every residential electricity plan published for the {zone} network through the
-    Consumer Data Right, maps each onto the same tariff model as your own plans, and compares them
-    against your actual consumption. Takes well under a minute and the result is cached.
+    Every residential electricity plan published for the {zone} network, read from the register and
+    mapped onto the same tariff model as your own files. Reading writes nothing to your plans
+    directory: it fills a cache, and you choose afterwards what is worth keeping.
   </p>
 
   <p>
     <button type="button"
-            hx-post="/fragments/market/harvest"
-            hx-target="#market"
-            hx-swap="innerHTML"
+            hx-post="/market/harvest?{shell.windowQuery()}"
+            hx-target="body"
+            hx-swap="outerHTML"
             hx-indicator="#market-busy">
-      {#if harvested}Refresh market plans{#else}Fetch market plans{/if}
+      {#if harvested}Read the register again{#else}Read the register{/if}
     </button>
-    <span id="market-busy" class="htmx-indicator">Fetching the market&hellip;</span>
+    <span id="market-busy" class="htmx-indicator">Reading the register&hellip;</span>
+    {#if harvestedAt}
+    <span class="chip" style="margin-left:10px" title="Rates move. A plan read three weeks ago may not be on sale today.">Last read {harvestedAt}</span>
+    {/if}
+  </p>
+
+  <p class="explain" style="margin:10px 0 0">
+    Anything you keep is written into <span class="num">{directory}</span>, beside the plan files
+    you write yourself.
   </p>
 
   {#if error}
   <p class="notice error" style="margin-top:14px">{error}</p>
   {/if}
 
-  {#if harvested}
-  <ul style="margin:14px 0 0; padding-left:18px; font-size:13px; color:var(--muted)">
-    {#for line in summary}<li>{line}</li>{/for}
-  </ul>
-
-  {#if skipReasons.size != 0}
-  <p class="explain" style="margin:12px 0 4px">Plans that could not be represented:</p>
-  <ul style="margin:0; padding-left:18px; font-size:12.5px; color:var(--muted)">
-    {#for reason in skipReasons}<li>{reason}</li>{/for}
-  </ul>
-  {/if}
-
-  <p class="explain" style="margin:14px 0 0">
-    Published rates exclude GST and have been grossed up so they are directly comparable with the
-    figures on your bill. A plan that could not be represented in the tariff model was skipped
-    rather than approximated. Update the date range above to re-cost everything.
-  </p>
+  {#if !harvested}
+  <div class="three-up" style="margin-top:20px; padding-top:20px; border-top:1px solid var(--line)">
+    <div>
+      <div class="finding-title">Read, then choose</div>
+      <p class="explain" style="margin:0">
+        Reading fills a cache, not your plans directory. Files appear there only when you tick a
+        plan and save it.
+      </p>
+    </div>
+    <div>
+      <div class="finding-title">Refused rather than guessed</div>
+      <p class="explain" style="margin:0">
+        A plan whose shape the tariff model cannot hold is refused with a reason rather than
+        approximated into something priceable.
+      </p>
+    </div>
+    <div>
+      <div class="finding-title">Plain YAML afterwards</div>
+      <p class="explain" style="margin:0">
+        A saved plan is the same hand-editable file you already write, with a note recording which
+        published plan it came from and the day it was read.
+      </p>
+    </div>
+  </div>
   {/if}
   {/if}
 </section>
+
+{#if enabled && harvested}
+{!
+  Criteria travel in the query string, so this form is a plain GET: submitting it produces a URL
+  that completely describes what is on screen, and the back button works.
+!}
+<form id="criteria" class="criteria"
+      hx-get="/market/results"
+      hx-target="#results"
+      hx-trigger="change, submit"
+      hx-swap="innerHTML"
+      hx-indicator="#busy">
+
+  <input type="hidden" name="from" value="{shell.window.from}">
+  <input type="hidden" name="to" value="{shell.window.to}">
+
+  <label>Search
+    <input type="search" name="search" value="{page.query.search}"
+           placeholder="Plan or retailer">
+  </label>
+
+  <label>Retailer
+    <select name="retailer">
+      <option value="">Every retailer</option>
+      {#for retailer in page.retailers}
+      <option value="{retailer}" {#if page.query.retailer == retailer}selected{/if}>{retailer}</option>
+      {/for}
+    </select>
+  </label>
+
+  <label>Shape
+    <select name="shape">
+      <option value="ANY" {#if page.query.shape.name == 'ANY'}selected{/if}>Any shape</option>
+      <option value="FLAT" {#if page.query.shape.name == 'FLAT'}selected{/if}>Flat rate</option>
+      <option value="TIME_OF_USE" {#if page.query.shape.name == 'TIME_OF_USE'}selected{/if}>Time of use</option>
+      <option value="BLOCK" {#if page.query.shape.name == 'BLOCK'}selected{/if}>Block</option>
+      <option value="DEMAND" {#if page.query.shape.name == 'DEMAND'}selected{/if}>Demand</option>
+    </select>
+  </label>
+
+  <label>Sort by
+    <select name="sort">
+      <option value="TOTAL" {#if page.query.sort.name == 'TOTAL'}selected{/if}>What it would cost you</option>
+      <option value="SUPPLY_CHARGE" {#if page.query.sort.name == 'SUPPLY_CHARGE'}selected{/if}>Daily supply</option>
+      <option value="PEAK_RATE" {#if page.query.sort.name == 'PEAK_RATE'}selected{/if}>Evening peak rate</option>
+      <option value="OFFPEAK_RATE" {#if page.query.sort.name == 'OFFPEAK_RATE'}selected{/if}>Overnight / off-peak rate</option>
+      <option value="MIDDAY_RATE" {#if page.query.sort.name == 'MIDDAY_RATE'}selected{/if}>Middle of day rate</option>
+      <option value="SHOULDER_RATE" {#if page.query.sort.name == 'SHOULDER_RATE'}selected{/if}>Shoulder rate</option>
+      <option value="FLAT_RATE" {#if page.query.sort.name == 'FLAT_RATE'}selected{/if}>Flat rate</option>
+      <option value="FEED_IN_RATE" {#if page.query.sort.name == 'FEED_IN_RATE'}selected{/if}>Solar feed-in</option>
+      <option value="NAME" {#if page.query.sort.name == 'NAME'}selected{/if}>Retailer and name</option>
+    </select>
+  </label>
+
+  <label>Show
+    <select name="limit">
+      <option value="25" {#if page.query.limit == 25}selected{/if}>25</option>
+      <option value="50" {#if page.query.limit == 50}selected{/if}>50</option>
+      <option value="100" {#if page.query.limit == 100}selected{/if}>100</option>
+      <option value="all" {#if page.query.showsAll()}selected{/if}>All</option>
+    </select>
+  </label>
+
+  <label class="tickbox">
+    <input type="checkbox" name="held" value="true" {#if page.query.hideHeld}checked{/if}>
+    Hide plans I already have
+  </label>
+
+  {!
+    Off by default. These plans publish a unit price because the register has nowhere to put
+    "it depends", and costing a year against that price produces a total that reads like every
+    other total on the page and means nothing.
+  !}
+  <label class="tickbox">
+    <input type="checkbox" name="flexible" value="true"
+      {#if page.query.includeMarketLinked}checked{/if}>
+    Allow flexible / market rates
+  </label>
+
+  <button type="submit" class="primary">Apply</button>
+  <span id="busy" class="htmx-indicator">Filtering&hellip;</span>
+  <span class="spacer"></span>
+  <span class="meta" style="font-size:12px; color:var(--muted)">
+    saving into <span class="num">{directory}</span>
+  </span>
+</form>
+{/if}
+
+<main id="results">
+  {#include MarketResource/results.html shell=shell page=page directory=directory saved=saved /}
+</main>
+
+{/body}
+{/include}

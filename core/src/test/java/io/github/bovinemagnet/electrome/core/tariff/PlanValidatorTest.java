@@ -178,4 +178,65 @@ class PlanValidatorTest {
         var plan = planOf(new DailySupply(new BigDecimal("123.20")));
         assertThatThrownBy(() -> PlanValidator.validate(plan)).hasMessageContaining("test");
     }
+
+    // ---------- feed-in credits ----------
+
+    /**
+     * A feed-in that covers only part of the day is refused for the same reason a usage charge
+     * is: the gap is indistinguishable from a window that credits nothing, and the two mean
+     * different things to a household deciding whether to install solar.
+     */
+    @Test
+    void rejectsAFeedInThatLeavesPartOfTheDayUncredited() {
+        var plan = new Plan("gap", "Gap", "Test", DistributionZone.AUSNET,
+                List.of(new FlatRate(new BigDecimal("30.00")),
+                        new SolarFeedIn(List.of(
+                                Band.parse("16:00", "21:00", DaySelector.ALL,
+                                        new BigDecimal("3.30"))))),
+                true, null, null);
+
+        assertThat(PlanValidator.problems(plan))
+                .anySatisfy(problem -> assertThat(problem).contains("not credited"));
+    }
+
+    @Test
+    void rejectsOverlappingFeedInBands() {
+        var plan = new Plan("overlap", "Overlap", "Test", DistributionZone.AUSNET,
+                List.of(new FlatRate(new BigDecimal("30.00")),
+                        new SolarFeedIn(List.of(
+                                Band.parse("00:00", "24:00", DaySelector.ALL,
+                                        new BigDecimal("1.00")),
+                                Band.parse("16:00", "21:00", DaySelector.ALL,
+                                        new BigDecimal("3.30"))))),
+                true, null, null);
+
+        assertThat(PlanValidator.problems(plan))
+                .anySatisfy(problem -> assertThat(problem).contains("more than one band"));
+    }
+
+    @Test
+    void acceptsAFeedInWhoseBandsCoverTheWholeDay() {
+        var plan = new Plan("tiled", "Tiled", "Test", DistributionZone.AUSNET,
+                List.of(new FlatRate(new BigDecimal("30.00")),
+                        new SolarFeedIn(List.of(
+                                Band.parse("00:00", "16:00", DaySelector.ALL,
+                                        new BigDecimal("0.11")),
+                                Band.parse("16:00", "21:00", DaySelector.ALL,
+                                        new BigDecimal("3.30")),
+                                Band.parse("21:00", "24:00", DaySelector.ALL,
+                                        new BigDecimal("0.11"))))),
+                true, null, null);
+
+        assertThat(PlanValidator.problems(plan)).isEmpty();
+    }
+
+    @Test
+    void acceptsAFlatFeedInWhichCoversTheDayByConstruction() {
+        var plan = new Plan("flat", "Flat", "Test", DistributionZone.AUSNET,
+                List.of(new FlatRate(new BigDecimal("30.00")),
+                        new SolarFeedIn(new BigDecimal("3.30"))),
+                true, null, null);
+
+        assertThat(PlanValidator.problems(plan)).isEmpty();
+    }
 }

@@ -274,4 +274,17 @@ class PlanDetailTest {
 
         assertThat(detail.local()).isTrue();
     }
+
+    /** A credit that changes across the day is a different offer, so it is named differently. */
+    @Test
+    void namesAFeedInThatChangesAcrossTheDay() {
+        var varying = new SolarFeedIn(List.of(
+                Band.parse("00:00", "16:00", DaySelector.ALL, new BigDecimal("1.65")),
+                Band.parse("16:00", "21:00", DaySelector.ALL, new BigDecimal("11.00")),
+                Band.parse("21:00", "24:00", DaySelector.ALL, new BigDecimal("1.65"))));
+
+        var detail = detail(plan(threeBands(), varying), PlanExtras.none(), List.of());
+
+        assertThat(detail.components()).contains("Solar feed-in, by time of day");
+    }
 }

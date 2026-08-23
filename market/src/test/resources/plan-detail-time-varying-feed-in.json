@@ -1,0 +1,146 @@
+{
+  "data": {
+    "planId": "TVF000001@VEC",
+    "displayName": "Time Varying Feed In",
+    "brandName": "Test Retailer",
+    "fuelType": "ELECTRICITY",
+    "customerType": "RESIDENTIAL",
+    "geography": {
+      "distributors": [
+        "AusNet Services (electricity)"
+      ]
+    },
+    "electricityContract": {
+      "pricingModel": "SINGLE_RATE",
+      "tariffPeriod": [
+        {
+          "startDate": "01-01",
+          "endDate": "12-31",
+          "dailySupplyCharge": "1.10",
+          "rateBlockUType": "singleRate",
+          "singleRate": {
+            "displayName": "Rate",
+            "period": "P1D",
+            "rates": [
+              {
+                "unitPrice": "0.30"
+              }
+            ]
+          }
+        }
+      ],
+      "solarFeedInTariff": [
+        {
+          "scheme": "VARIABLE",
+          "payerType": "RETAILER",
+          "displayName": "Variable FIT policy",
+          "description": "TOU Solar feed-in",
+          "tariffUType": "timeVaryingTariffs",
+          "timeVaryingTariffs": [
+            {
+              "type": "SHOULDER",
+              "period": "P1D",
+              "displayName": "Shoulder",
+              "rates": [
+                {
+                  "unitPrice": "0.035"
+                }
+              ],
+              "timeVariations": [
+                {
+                  "days": [
+                    "MON",
+                    "TUE",
+                    "WED",
+                    "THU",
+                    "FRI",
+                    "SAT",
+                    "SUN"
+                  ],
+                  "startTime": "21:00",
+                  "endTime": "00:00"
+                },
+                {
+                  "days": [
+                    "MON",
+                    "TUE",
+                    "WED",
+                    "THU",
+                    "FRI",
+                    "SAT",
+                    "SUN"
+                  ],
+                  "startTime": "00:00",
+                  "endTime": "10:00"
+                },
+                {
+                  "days": [
+                    "MON",
+                    "TUE",
+                    "WED",
+                    "THU",
+                    "FRI",
+                    "SAT",
+                    "SUN"
+                  ],
+                  "startTime": "14:00",
+                  "endTime": "16:00"
+                }
+              ]
+            },
+            {
+              "type": "OFF_PEAK",
+              "period": "P1D",
+              "displayName": "Off peak",
+              "rates": [
+                {
+                  "unitPrice": "0.015"
+                }
+              ],
+              "timeVariations": [
+                {
+                  "days": [
+                    "MON",
+                    "TUE",
+                    "WED",
+                    "THU",
+                    "FRI",
+                    "SAT",
+                    "SUN"
+                  ],
+                  "startTime": "10:00",
+                  "endTime": "14:00"
+                }
+              ]
+            },
+            {
+              "type": "PEAK",
+              "period": "P1D",
+              "displayName": "Peak",
+              "rates": [
+                {
+                  "unitPrice": "0.10"
+                }
+              ],
+              "timeVariations": [
+                {
+                  "days": [
+                    "MON",
+                    "TUE",
+                    "WED",
+                    "THU",
+                    "FRI",
+                    "SAT",
+                    "SUN"
+                  ],
+                  "startTime": "16:00",
+                  "endTime": "21:00"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
