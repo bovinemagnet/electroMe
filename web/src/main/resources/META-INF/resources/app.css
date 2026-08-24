@@ -429,3 +429,130 @@ th.pick, td.pick { width: 30px; padding-right: 0; }
   .table-scroll { overflow-x: auto; }
   .tariff-strip em { display: none; }
 }
+
+/* ---------- market: browsing published plans and keeping them ---------- */
+
+/* Whether a published plan is already a file, and whether that file is still current.
+   Three states, because "I have it" and "I have an out-of-date copy of it" are different
+   answers to the only question this column is asked. */
+.status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+.status::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+.status.held { color: var(--accent); }
+.status.stale { color: var(--warn); }
+.status.unheld { color: var(--muted); }
+.status.renamed { color: var(--shoulder); }
+.status-note { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* The file a plan would be written to, said before it is written rather than after. */
+.target-file {
+  font-size: 11.5px; color: var(--muted);
+  border: 0; padding: 0; background: none; cursor: help;
+}
+
+.saved-report { border-left: 3px solid var(--accent); }
+.written-list { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.written-list li {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  padding: 9px 0; border-bottom: 1px solid var(--line);
+}
+.written-list li:last-child { border-bottom: 0; }
+.written-list .file { min-width: 300px; }
+.written-list .what { font-size: 12.5px; color: var(--muted); }
+.failures { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--error); }
+
+.finding-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+
+a.button.primary-link {
+  background: var(--accent); border-color: var(--accent);
+  color: var(--bg); font-weight: 600;
+}
+a.button.primary-link:hover { color: var(--bg); filter: brightness(1.08); }
+
+/* ---------- market: what a plan is worth, and how its rates rank ---------- */
+
+/* Two encodings, deliberately kept apart.
+
+   The rate cells shade NEUTRALLY, by position within their own column. They must not use the
+   band hues: red already means the evening peak window everywhere else in this application,
+   and tinting an "Evening peak" cell red for being expensive would give red two jobs in one
+   table. Darkness alone carries dearness.
+
+   The value column is the only coloured thing in the row, so it is where the eye lands. It
+   reuses the comparison vocabulary the plan browser already established — green for cheaper,
+   red for dearer — anchored on the household's own plan rather than on the cheapest row. */
+
+.heat-1 { background: color-mix(in oklab, var(--fg) 2%, transparent); }
+.heat-2 { background: color-mix(in oklab, var(--fg) 5%, transparent); }
+.heat-3 { background: color-mix(in oklab, var(--fg) 9%, transparent); }
+.heat-4 { background: color-mix(in oklab, var(--fg) 14%, transparent); }
+
+th.value-head { min-width: 132px; }
+
+/* Magnitude is carried by bar length as well as by tint, so the ranking still reads in
+   greyscale and for anyone who cannot separate the two hues. */
+.value { text-align: right; min-width: 132px; }
+.value-amount { font-size: 16px; font-weight: 600; }
+.value-delta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+
+.value-track {
+  position: relative; height: 5px; margin: 4px 0 2px;
+  background: var(--panel-2); border-radius: 3px; overflow: hidden;
+}
+/* A hairline at the midpoint: the bar is meaningless without the anchor it grows from. */
+.value-track::before {
+  content: ''; position: absolute; left: 50%; top: 0; bottom: 0;
+  width: 1px; background: var(--line);
+}
+.value-bar { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+
+.value.cheaper .value-bar { right: 50%; background: var(--offpeak); }
+.value.dearer .value-bar { left: 50%; background: var(--peak); }
+.value.cheaper .value-delta { color: var(--offpeak); }
+.value.dearer .value-delta { color: var(--peak); }
+.value.anchor .value-amount { color: var(--accent); }
+
+.value.cheaper.step-1 { background: color-mix(in oklab, var(--offpeak) 5%, transparent); }
+.value.cheaper.step-2 { background: color-mix(in oklab, var(--offpeak) 10%, transparent); }
+.value.cheaper.step-3 { background: color-mix(in oklab, var(--offpeak) 16%, transparent); }
+.value.cheaper.step-4 { background: color-mix(in oklab, var(--offpeak) 23%, transparent); }
+.value.dearer.step-1 { background: color-mix(in oklab, var(--peak) 5%, transparent); }
+.value.dearer.step-2 { background: color-mix(in oklab, var(--peak) 10%, transparent); }
+.value.dearer.step-3 { background: color-mix(in oklab, var(--peak) 16%, transparent); }
+.value.dearer.step-4 { background: color-mix(in oklab, var(--peak) 23%, transparent); }
+
+/* The scale itself. A ramp with no numbers on it is decoration, so it names its own anchor
+   and states what the widest gap on the page is worth. */
+.value-legend {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 14px; font-size: 12px; color: var(--muted);
+}
+.value-legend .ramp {
+  display: inline-flex; width: 210px; height: 9px;
+  border-radius: 3px; overflow: hidden; border: 1px solid var(--line);
+}
+.value-legend .ramp-cheaper {
+  flex: 1; background: linear-gradient(to right, var(--offpeak), transparent);
+}
+.value-legend .ramp-mid { width: 1px; background: var(--line); }
+.value-legend .ramp-dearer {
+  flex: 1; background: linear-gradient(to right, transparent, var(--peak));
+}
+.value-legend .end { font-weight: 600; }
+.value-legend .end.cheaper { color: var(--offpeak); }
+.value-legend .end.dearer { color: var(--peak); }
+.value-legend .anchor-name { flex-basis: 100%; font-size: 11.5px; }
+
+/* A plan sold as exposure to the wholesale market. Its published rate is illustrative, so the
+   chip is a warning rather than a category: everything about the row that looks like a price
+   is one the household cannot be quoted. */
+.chip.market-linked { color: var(--shoulder); border-color: var(--shoulder); }
+
+/* A mandatory recurring fee, unlike every other published fee, is in the total. The chip says
+   so rather than warning: it marks a figure that is more complete than its neighbours. */
+.chip.membership { color: var(--accent); border-color: var(--accent); }

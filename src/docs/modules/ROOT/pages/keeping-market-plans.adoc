@@ -1,0 +1,277 @@
+= Keeping market plans
+:description: Choosing which published tariffs are worth keeping as plan files, and how your own files are protected when you do.
+
+xref:browsing-plans.adoc[The plan browser] answers what a tariff would cost this household. This
+screen answers the question before it: which published tariffs are worth having as files at all.
+It shows what each published plan charges and lets you tick the ones to keep.
+
+Open it from the navigation, labelled *Market*, between *Plans* and *Rates*.
+
+The screen costs every published plan against the household's own half-hourly consumption over the
+selected window, and the totals column is the default sort. It prices each plan _as the register
+publishes it today_, never from a copy already saved — a screen whose job is to show you that your
+saved copy has gone out of date cannot then price the out-of-date copy beside the warning. (The
+plan browser, by contrast, lets a local file win, which is right there: a hand-written plan is a
+deliberate statement.)
+
+Also note: with no interval data loaded, the totals column is simply absent and the screen still
+lists what every plan charges.
+
+== Reading the register
+
+Press *Read the register*.
+
+Nothing is read at startup. A read reaches a public regulator's infrastructure, so it happens only
+when you ask, and the application stays usable with no network at all.
+
+Reading fills the on-disk harvest cache — it does not touch the plans directory. Nothing is
+written to a file until you say so. Before it writes anything, the screen names the absolute plans
+directory it would write into, so you know exactly where a save would land before you commit to
+one.
+
+== The table
+
+Each row is one published plan, from the register or the cache behind it.
+
+Tick box::
+Marks the plan for saving.
+
+Plan::
+The plan's name, with the file name it would be saved as underneath it. Beside the name, chips
+mark eligibility requirements and, where the plan publishes any, "N fees not costed" — see
+<<fees>>.
+
+Retailer::
+Who publishes the plan.
+
+Shape::
+Flat, time-of-use, block or demand, the same vocabulary xref:browsing-plans.adoc[the plan browser]
+and xref:plan-rates.adoc[plan rates] use.
+
+Rate columns::
+One column per published rate component — daily supply, evening peak, middle of day,
+overnight/off-peak, shoulder, flat, solar feed-in, and so on — but only for the components some
+plan on the page actually charges; a network with no demand plans on it gets no demand column.
+Rates are in cents and GST inclusive. A dash means the plan has no such charge; an asterisk means
+the rate holds only up to a daily or monthly allowance.
+
+=== Filters
+
+Search::
+Matches the plan name or the retailer, ignoring case.
+
+Retailer::
+Narrows the table to one retailer.
+
+Shape::
+Any, flat, time of use, block or demand.
+
+Sort by::
+What it would cost you (the default), daily supply, evening peak rate, overnight/off-peak, middle
+of day, shoulder, flat rate, solar feed-in, retailer or name.
+
+Show::
+25, 50, 100 or all rows.
+
+Hide plans I already have::
+Drops every row already <<status,held>>, so the table shows only what would actually be new.
+
+Allow flexible / market rates::
+A tick box, off by default. Lets in the plans whose rates follow the wholesale market rather than
+a published figure. See the new section for why they are held back.
+
+Every criterion travels in the query string, so the URL fully describes the screen: it can be
+bookmarked, sent to somebody else, and the back button returns you to exactly the view you left.
+
+== Reading the colour
+
+There are two colour encodings in the table, and they are deliberately different kinds.
+
+*The rate cells* are shaded neutrally — grey, no hue — by where each rate sits within *its own
+column*, lightest for the cheapest quarter and darkest for the dearest. Per column, because a daily
+supply charge in cents per day and a peak rate in cents per kilowatt hour are different units; one
+scale across both would only ever say that the supply charge is the expensive part of every plan.
+Ranked by position rather than by distance, so a single outlier priced at four times the market
+cannot flatten every other plan into one shade. Solar feed-in inverts, because there the largest
+number is the best one.
+
+The rate cells carry no hue because the band colours already mean something fixed everywhere else
+in electroMe — red is the evening peak window, amber the middle of the day, green the cheapest
+window — and tinting an "Evening peak" cell red for being expensive would give red two jobs in one
+table.
+
+*The totals column* is the only coloured thing in a row, and so is where the eye lands. It uses a
+diverging scale: green for cheaper than the plan you are on, red for dearer, with the middle of the
+scale anchored on your own tariff — the one named by `electrome.baseline.plan` (see
+xref:configuration.adoc[Configuration]). Anchored there rather than on the cheapest row because
+"cheaper than what I pay now" is the decision being made, and because a scale anchored on the
+cheapest row would move every time you changed a filter.
+
+Each row also carries a bar whose length is proportional to the gap, the widest gap on the page
+filling its half of the track. Magnitude is carried by length as well as by colour, so the ranking
+still reads in greyscale and for anyone who cannot separate the two hues.
+
+A legend above the table names what the middle of the scale is and what the widest gap on the page
+is worth.
+
+A plan can shade light on one rate column and still cost you more overall — a cheap evening rate
+with a heavy daily supply charge is the common case — which is why the total is the column to read
+and the rate shading is context rather than a verdict.
+
+[#status]
+== "In your plans directory"
+
+A column comparing each published plan against the plans directory, in one of three states.
+
+Not held::
+Saving this plan would write a new file.
+
+Held::
+You already have this plan, and your file matches what is currently published.
+
+Rates moved::
+You have this plan, but the retailer now publishes something different from what your file holds.
+Saving updates your file to match.
+
+The third state is the one that matters. A saved plan quietly going out of date is invisible
+everywhere else in the application — the dashboard, the plan browser and the rates table all read
+your file as though it were still current, because nothing about a stale file looks wrong from the
+outside. This column is the only place that mismatch is ever shown.
+
+== Saving
+
+Tick the plans you want and press *Save the ticked plans*. Each becomes an ordinary YAML file in
+the plans directory — the same hand-editable format documented in
+xref:defining-a-plan.adoc[Defining a plan].
+
+After saving, the plans directory is re-read immediately, so the plans you have just kept appear on
+the dashboard, in the plan browser and in the rates table straight away, with no restart and no
+separate *Reload plan files* step.
+
+The save report lists every file by name, and what happened to it:
+
+* *New file* — nothing with this identifier existed, so a file was written.
+* *Replaced* — a file electroMe had written for this plan already existed, and its rates had
+  moved, so it was overwritten with the current ones.
+* *Already up to date* — a file electroMe had written for this plan already existed and matched, so
+  nothing changed.
+* *New file, renamed* — see <<protection>>.
+
+[#protection]
+== How your own files are protected
+
+This is the part worth reading carefully before you tick anything.
+
+A file electroMe writes carries a `source:` block naming the published plan identifier and the day
+the register was read:
+
+[source,yaml]
+----
+source:
+  cdrPlanId: "GLO785330MR@VEC"
+  readOn: 2026-08-21
+----
+
+The rule that follows from it:
+
+* A file carrying a `source:` block was written by electroMe, and *may* be replaced when the
+  register publishes something different for that identifier.
+* A file without one was written by hand, and is *never* overwritten — no exceptions.
+
+If a hand-written file already occupies the name a harvested plan would use, the harvested plan
+does not touch it. It takes the next free name instead, and the save report says so as
+*New file, renamed*. Nothing you wrote by hand is ever silently replaced because a retailer
+happened to publish something under a similar name.
+
+Plans are matched by their published identifier, not by file name. Rename a saved file by hand, and
+the next save still recognises it as the same plan and updates it in place, rather than writing a
+second copy alongside it.
+
+Deleting the `source:` block from a file makes it yours. From that point electroMe treats it as
+hand-written and leaves it alone, exactly as if you had typed it from scratch.
+
+Writes go through a temporary file and an atomic move, so the plan loader — which reads the
+directory independently, at startup and on *Reload plan files* — never sees a half-written file.
+
+== What is written
+
+Rates are written exactly as harvested, with `gstInclusive: true`.
+
+This is deliberate rather than a shortcut. Harvested rates have already been grossed up to include
+GST; dividing them back down to an exclusive figure would turn an exact published rate into a
+repeating decimal, and reading that number back in would show it as something other than what was
+actually published.
+
+Rate values are written as quoted YAML scalars — `"22.60"` rather than `22.60` — because unquoted
+YAML reads a number like that as a float and drops the trailing zero. An unquoted `22.60` becomes
+`22.6` the moment it is written, which would make every saved plan look, on the very next read, as
+though its rate had moved when nothing about it had.
+
+[#market-linked]
+== Flexible and market-linked rates
+
+A small number of retailers sell exposure to the wholesale electricity market rather than a rate.
+You are billed at what the energy actually costs in the market at the time you use it, usually with
+a membership fee on top. On the AusNet network this is Amber Electric and Flow Power — about thirty
+published plans between them.
+
+These plans still publish a unit price. They have to: the register models a tariff as a set of
+rates and has nowhere to record "it depends". Amber, for example, publishes 40.2c per kilowatt hour
+and a daily supply charge of 53.8c, and then states in the plan's own price-variation text that the
+rate is illustrative only. Costing a year of the household's consumption against that figure
+produces a total that looks exactly like every other total in the table and means nothing.
+
+That illustrative supply charge — 59.2c including GST — is the lowest published anywhere on the
+AusNet network; the next lowest is 71.5c. So sorted by daily supply the plan comes top of the
+table, and its supply cell shades as the cheapest in that column. Its illustrative usage rate,
+though, is a flat 44.2c per kilowatt hour, which is high, so its total lands near the bottom.
+Neither position means anything. The plan tops one column and props up another, and both figures
+come from a rate the retailer has said is illustrative. The danger is not that these plans rank
+well or badly; it is that they rank at all, on a scale they do not belong to.
+
+So they are left out of the table by default, and the tick box *Allow flexible / market rates*
+brings them in. When shown, three things mark them: a "Market-linked rates" chip on the row whose
+tooltip carries the retailer's own wording verbatim, an asterisk on the total, and a standing note
+above the table. The count line says how many are being held back and offers to show them.
+
+=== How they are recognised
+
+The register carries no flag for this, so electroMe reads what the retailer says in the plan's
+price-variation text and looks for a claim that the price follows the wholesale or spot market. The
+test is deliberately narrow. "Prices are subject to change" is not enough — nearly every plan in the
+register says that, and matching it would hide the whole market. Neither is "pass through", which a
+dozen ordinary plans use for network charges recovered at cost. Naming the wholesale or spot market
+is the claim that actually distinguishes them, and across the AusNet network it selects exactly the
+two retailers that sell such plans and nothing else.
+
+Because this reads free text rather than a published flag, a retailer who words it differently could
+be missed. The chip carries the retailer's own sentence so the classification can be judged rather
+than taken on trust, and a plan you can see is market-linked but which is not marked is worth
+reporting.
+
+[#fees]
+== Fees and incentives
+
+Fees and incentives are shown as chips on the row, the same as on
+xref:browsing-plans.adoc#fees[the plan browser], and, with one exception, none of them is included
+in any figure on this screen.
+
+The exception is a mandatory membership fee — one you must pay to be on the plan at all. That fee
+is costed into the total, because it is unavoidable, and the row carries a chip stating so with the
+yearly amount. See xref:tariff-reference.adoc#membership[membership].
+
+Every other published fee stays out of every figure, and this is deliberate rather than a gap: a
+late payment fee, a paper bill fee, a card processing fee, a disconnection fee are all facts about
+what the household does rather than about the tariff, and costing them would charge a reader for
+behaviour they have not got.
+
+The chip is there so a plan carrying a fee cannot be saved, and later ranked, without you knowing
+the fee exists.
+
+== See also
+
+* xref:market-plans.adoc[Market plans] — running a harvest, and how the register is read.
+* xref:browsing-plans.adoc[Browsing plans] — what a kept plan is worth to this household.
+* xref:plan-rates.adoc[Plan rates] — the same rate vocabulary, across every plan you hold.
+* xref:defining-a-plan.adoc[Defining a plan] — the file format a save writes into.
+* xref:configuration.adoc[Configuration] — `electrome.plans.dir`, and how the path is resolved.

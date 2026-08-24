@@ -33,6 +33,7 @@ public record Shell(
     public static final List<Screen> SCREENS = List.of(
             new Screen("/", "Dashboard", "dashboard"),
             new Screen("/plans", "Plans", "plans"),
+            new Screen("/market", "Market", "market"),
             new Screen("/rates", "Rates", "rates"),
             new Screen("/compare", "Compare", "compare"),
             new Screen("/seasons", "Seasons", "seasons"),

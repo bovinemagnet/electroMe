@@ -1,0 +1,220 @@
+{#if saved}
+<section class="panel saved-report">
+  <p class="eyebrow" style="margin-bottom:4px">Written</p>
+
+  {#if saved.written.isEmpty()}
+  <p style="margin:0 0 6px; font-size:15px">Nothing was written.</p>
+  {#else}
+  <p style="margin:0 0 6px; font-size:16px; line-height:1.55">
+    <strong>{saved.count}</strong> {#if saved.count == 1}plan{#else}plans{/if} written to
+    <span class="num">{saved.directory}</span>{#if saved.replaced != 0}, {saved.replaced} of them
+    replacing a file that had gone out of date{/if}.
+  </p>
+  <p class="explain">
+    They are ordinary plan files now — yours to edit, rename or delete. Rates were written exactly
+    as harvested and already inclusive of GST, so nothing is grossed up twice when they load.
+  </p>
+
+  <ul class="written-list">
+    {#for file in saved.written}
+    <li>
+      <span class="num file">{file.fileName}</span>
+      <span class="what">{file.retailer} &middot; {file.planName}</span>
+      <span class="spacer"></span>
+      <span class="status {file.outcomeClass}">{file.outcomeLabel}</span>
+    </li>
+    {/for}
+  </ul>
+
+  {#if saved.anyRenamed}
+  <p class="explain" style="margin:12px 0 0">
+    One of these could not use the name its retailer and plan suggest, because a file you wrote by
+    hand already had it. Yours was left exactly as it is and the new plan took the next free name.
+  </p>
+  {/if}
+
+  <p class="compare-action" style="margin-top:14px">
+    <a class="button primary-link" href="{shell.link('/plans')}">See what they would cost you</a>
+    <a class="button" href="{shell.link('/rates')}">Compare their rates</a>
+  </p>
+  {/if}
+
+  {#if saved.anyFailed}
+  <p class="explain" style="margin:14px 0 4px">These could not be written:</p>
+  <ul class="failures">{#for failure in saved.failed}<li>{failure}</li>{/for}</ul>
+  {/if}
+</section>
+{/if}
+
+{#if page.total == 0}
+<section class="panel">
+  <h2 style="margin-top:0; font-size:16px">Nothing has been read from the register yet</h2>
+  <p class="explain" style="margin:0">
+    Read it above and every plan published for your network appears here, with what it charges.
+  </p>
+</section>
+
+{#else if page.empty()}
+<section class="panel">
+  <h2 style="margin-top:0; font-size:16px">No published plan matches</h2>
+  <p class="explain">
+    {page.total} plans were read from the register. None of them met every criterion in force.
+  </p>
+  <p style="margin:0">
+    <a class="button" href="{shell.link('/market')}">Clear all criteria</a>
+  </p>
+</section>
+
+{#else}
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">What each plan publishes</p>
+  <p class="explain">
+    Rates as published, in cents, inclusive of GST. A dash means the plan has no such charge and an
+    asterisk that the rate holds only up to an allowance. Rate cells are shaded within their own
+    column — darker is dearer — because a supply charge and a peak rate are different units and one
+    scale over both would say nothing.
+  </p>
+  {#if page.anyMarketLinkedShown()}
+  <p class="notice warning" style="margin:0 0 14px; padding:12px 14px">
+    Some plans below sell exposure to the wholesale market rather than a rate. They still publish
+    a unit price, because the register has nowhere to put "it depends", but it is illustrative —
+    so their totals are marked, and what you would actually pay depends on the spot price when you
+    use the energy. They are not comparable with the rest of the table.
+  </p>
+  {/if}
+  {#if page.costed()}
+  <p class="explain" style="margin-top:-6px">
+    Totals price each plan <em>as the register publishes it today</em> against your own half-hourly
+    consumption over {shell.window.days()} days, not against any copy already saved. A plan that
+    publishes a cheap evening rate and a heavy daily supply charge shades green on one column and
+    still costs you more, which is why the total is the column to read.
+  </p>
+  {/if}
+
+  <p class="counts">
+    Showing {page.entries.size} of {page.matched} matching{#if page.total != page.matched},
+    from {page.total} read{/if}.
+    {#if page.heldCount != 0}
+    <span class="conditional-note">
+      You already have {page.heldCount} of these as files{#if page.staleCount != 0}, and
+      {page.staleCount} of those no longer match what the retailer publishes{/if}.
+    </span>
+    {/if}
+    {#if page.anyMarketLinkedHidden()}
+    <span class="conditional-note">
+      {page.marketLinkedHidden} plan{#if page.marketLinkedHidden != 1}s{/if} hidden because the
+      rates follow the wholesale market rather than a published figure.
+      <a href="{shell.link('/market?flexible=true')}">Show them</a>
+    </span>
+    {/if}
+    {#if page.truncated()}
+    <span class="truncation-note">
+      Limited to {page.entries.size}; <a href="{shell.link('/market?limit=all')}">show all
+      {page.matched}</a>.
+    </span>
+    {/if}
+  </p>
+
+  {#if page.hasScale()}
+  <div class="value-legend">
+    <span class="end cheaper">cheaper than yours</span>
+    <span class="ramp" aria-hidden="true">
+      <span class="ramp-cheaper"></span><span class="ramp-mid"></span><span class="ramp-dearer"></span>
+    </span>
+    <span class="end dearer">dearer than yours</span>
+    <span class="anchor-name">middle of the scale is <strong>{page.scale.anchorName}</strong>,
+      the plan you are on &middot; widest gap on this page
+      <span class="num">{money:dollars(page.scale.widestSaving)}</span></span>
+  </div>
+  {/if}
+
+  {!
+    A separate form from the criteria above, because HTML does not nest forms. The criteria ride
+    along as hidden fields so what comes back is filtered the way the screen already was.
+  !}
+  <form class="select-plans"
+        hx-post="/market/save"
+        hx-target="#results"
+        hx-swap="innerHTML"
+        hx-indicator="#saving">
+    <input type="hidden" name="from" value="{shell.window.from}">
+    <input type="hidden" name="to" value="{shell.window.to}">
+    <input type="hidden" name="search" value="{page.query.search}">
+    <input type="hidden" name="retailer" value="{page.query.retailer}">
+    <input type="hidden" name="shape" value="{page.query.shape}">
+    <input type="hidden" name="sort" value="{page.query.sort}">
+    {#if page.query.includeMarketLinked}<input type="hidden" name="flexible" value="true">{/if}
+    {#if page.query.hideHeld}<input type="hidden" name="held" value="true">{/if}
+    <input type="hidden" name="limit" value="{#if page.query.showsAll()}all{#else}{page.query.limit}{/if}">
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="pick"><span class="sr-only">Keep</span></th>
+            <th>Plan</th><th>Retailer</th><th>Shape</th>
+            {#if page.costed()}<th class="right value-head">Over {shell.window.days()} days</th>{/if}
+            {#for column in page.rateColumns}<th class="right rate-col">{column.label()}</th>{/for}
+            <th>In your plans directory</th>
+          </tr>
+        </thead>
+        <tbody>
+        {#for entry in page.entries}
+          <tr>
+            <td class="pick">
+              <input type="checkbox" name="plans" value="{entry.id}"
+                     aria-label="Keep {entry.planName}">
+            </td>
+            <td>
+              <div class="plan-name">{entry.planName}</div>
+              <div class="chips">
+                <span class="num target-file" title="The file this plan would be written to.">{entry.fileName}</span>
+                {#if entry.qualified()}
+                {#for requirement in entry.requirements}<span class="chip" title="Offered only to households that qualify.">{requirement}</span>{/for}
+                {/if}
+                {#if entry.marketLinked()}<span class="chip market-linked" title="{entry.priceVariation}">Market-linked rates</span>{/if}
+                {#if entry.costsAMembership()}<span class="chip membership" title="This plan charges a membership to be on it at all. Unlike every other published fee it is unavoidable, so it is included in the total.">Membership {money:dollars(entry.membershipPerYear)} a year, in the total</span>{/if}
+                {#if entry.hasFees()}<span class="chip fees" title="This plan publishes fees that no figure on this screen includes.">{entry.feeCount} fees not costed</span>{/if}
+              </div>
+            </td>
+            <td class="plan-sub">{entry.retailer}</td>
+            <td class="plan-sub">{entry.shape}</td>
+            {#if page.costed()}
+            <td class="value {page.valueDirection(entry)} step-{page.valueStep(entry)}">
+              <div class="value-amount num">{money:dollars(entry.total)}{#if entry.marketLinked()}<abbr class="conditional-total" title="Costed from an illustrative rate. This plan follows the wholesale market, so the figure beside it is not a price you would pay.">*</abbr>{/if}</div>
+              {#if entry.comparedToBaseline()}
+              <div class="value-track" aria-hidden="true">
+                <span class="value-bar" style="width:{page.valueBar(entry)}%"></span>
+              </div>
+              <div class="value-delta num">{#if entry.isBaseline()}the plan you are on{#else if entry.cheaperThanBaseline()}{money:dollars(entry.saving())} less{#else}{money:dollars(entry.differenceFromBaseline)} more{/if}</div>
+              {/if}
+            </td>
+            {/if}
+            {#let rates=entry.rates}
+            {#for column in page.rateColumns}
+            <td class="right num rate-col {page.heatClass(entry, column)}">
+              {#if rates.has(column)}{money:cents(rates.rate(column))}{#if rates.capped(column)}<abbr class="conditional-total" title="Only up to a daily or monthly allowance; beyond it the rate is {money:cents(rates.beyond(column))}.">*</abbr>{/if}{#if column.name == 'FEED_IN' && entry.feedInVaries()}<abbr class="conditional-total" title="The best rate this plan pays. What it credits depends on when you export, falling to {money:cents(entry.feedInLowest)}.">&dagger;</abbr>{/if}{#else}<span class="absent">&mdash;</span>{/if}
+            </td>
+            {/for}
+            {/let}
+            <td>
+              <span class="status {entry.statusClass}">{entry.statusLabel}</span>
+              <div class="status-note">{entry.statusNote}</div>
+            </td>
+          </tr>
+        {/for}
+        </tbody>
+      </table>
+    </div>
+
+    <p class="compare-action">
+      <button type="submit" class="primary">Save the ticked plans</button>
+      <span id="saving" class="htmx-indicator">Writing&hellip;</span>
+      <span class="explain" style="display:inline; margin-left:10px">
+        Nothing is written to <span class="num">{directory}</span> until you press save, and a file
+        you wrote by hand is never replaced.
+      </span>
+    </p>
+  </form>
+</section>
+{/if}

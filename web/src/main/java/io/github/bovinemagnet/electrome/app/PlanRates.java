@@ -6,6 +6,7 @@ import io.github.bovinemagnet.electrome.core.tariff.Demand;
 import io.github.bovinemagnet.electrome.core.tariff.Discount;
 import io.github.bovinemagnet.electrome.core.tariff.DiscountBasis;
 import io.github.bovinemagnet.electrome.core.tariff.FlatRate;
+import io.github.bovinemagnet.electrome.core.tariff.Membership;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import io.github.bovinemagnet.electrome.core.tariff.SolarFeedIn;
 import io.github.bovinemagnet.electrome.core.tariff.Tiered;
@@ -72,8 +73,15 @@ public record PlanRates(
                         rates.put(PlanMatrix.Component.DEMAND, demand.centsPerKWPerDay());
                 case ControlledLoad controlled ->
                         rates.put(PlanMatrix.Component.CONTROLLED, controlled.centsPerKWh());
+                // The best rate the plan pays, which is the figure retailers advertise and the
+                // one a reader sorting by feed-in means. Where a credit changes across the day
+                // it is usually the evening band, which is not the first.
+                // Reported as cents per day, like the supply charge it behaves like, so the
+                // column is comparable down its length.
+                case Membership membership ->
+                        rates.put(PlanMatrix.Component.MEMBERSHIP, membership.centsPerDay());
                 case SolarFeedIn feedIn ->
-                        rates.put(PlanMatrix.Component.FEED_IN, feedIn.centsPerKWh());
+                        rates.put(PlanMatrix.Component.FEED_IN, feedIn.bestRate());
                 case Discount discount -> {
                     if (discount.basis() == DiscountBasis.PERCENTAGE) {
                         rates.put(PlanMatrix.Component.DISCOUNT, discount.value());
@@ -116,8 +124,12 @@ public record PlanRates(
         if (rate != null) {
             return rate;
         }
+        // These are not energy rates, so a plan without one has no comparable figure to fall
+        // back to. Answering with the usage rate would sort a fixed daily charge against a
+        // price per kilowatt hour.
         if (component == PlanMatrix.Component.DAILY_SUPPLY
-                || component == PlanMatrix.Component.FEED_IN) {
+                || component == PlanMatrix.Component.FEED_IN
+                || component == PlanMatrix.Component.MEMBERSHIP) {
             return null;
         }
         var flat = rates.get(PlanMatrix.Component.FLAT);

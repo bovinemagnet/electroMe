@@ -10,6 +10,7 @@ import io.github.bovinemagnet.electrome.core.tariff.DaySelector;
 import io.github.bovinemagnet.electrome.core.tariff.Demand;
 import io.github.bovinemagnet.electrome.core.tariff.Discount;
 import io.github.bovinemagnet.electrome.core.tariff.FlatRate;
+import io.github.bovinemagnet.electrome.core.tariff.Membership;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import io.github.bovinemagnet.electrome.core.tariff.SolarFeedIn;
 import io.github.bovinemagnet.electrome.core.tariff.Tiered;
@@ -269,7 +270,11 @@ public record PlanDetail(
                 case TimeOfUse unused -> "Time-of-use rates";
                 case Tiered unused -> "Block rates";
                 case Demand unused -> "Demand charge";
-                case SolarFeedIn unused -> "Solar feed-in";
+                // Named rather than inferred: a credit that pays eleven cents at six o'clock
+                // and under two at noon is a different offer from a flat one.
+                case SolarFeedIn feedIn ->
+                        feedIn.varies() ? "Solar feed-in, by time of day" : "Solar feed-in";
+                case Membership unused -> "Membership fee";
                 case Discount unused -> "Discount";
                 case ControlledLoad unused -> "Controlled load";
             };

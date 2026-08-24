@@ -48,6 +48,7 @@ public record PlanMatrix(List<Plan> plans, List<Row> rows, List<BillBreakdown> b
         DEMAND("Demand charge"),
         CONTROLLED("Controlled load"),
         FEED_IN("Solar feed-in"),
+        MEMBERSHIP("Membership fee"),
         DISCOUNT("Discount");
 
         private final String label;
@@ -206,6 +207,7 @@ public record PlanMatrix(List<Plan> plans, List<Row> rows, List<BillBreakdown> b
             case FEED_IN -> Component.FEED_IN;
             case DISCOUNT -> Component.DISCOUNT;
             case CONTROLLED -> Component.CONTROLLED;
+            case MEMBERSHIP -> Component.MEMBERSHIP;
             case USAGE -> usageComponent(plan, line);
         };
     }

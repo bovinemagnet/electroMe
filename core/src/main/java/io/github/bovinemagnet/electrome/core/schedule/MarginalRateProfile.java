@@ -225,10 +225,17 @@ public record MarginalRateProfile(
         return bandDays == DaySelector.ALL || wanted == DaySelector.ALL || bandDays == wanted;
     }
 
+    /**
+     * What a kilowatt hour of export is worth, for deciding when running an appliance is dearest.
+     *
+     * <p>The lowest rate the plan pays, not the best. This figure is what consuming instead of
+     * exporting gives up, and assuming the household always forgoes the evening rate would
+     * overstate the cost of running a dishwasher at noon on a plan that pays nothing at noon.
+     */
     private static BigDecimal feedInCents(Plan plan) {
         for (var charge : plan.charges()) {
             if (charge instanceof SolarFeedIn feedIn) {
-                return feedIn.centsPerKWh();
+                return feedIn.lowestRate();
             }
         }
         // Nothing is forgone by consuming energy that would have been exported for nothing.

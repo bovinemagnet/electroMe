@@ -58,7 +58,19 @@ public class ComparisonService {
      * exactly this code, so a scenario and the baseline can never diverge in their arithmetic.
      */
     public Comparison compare(DateRange range, UsageData usage) {
-        var plans = costable();
+        return compare(range, usage, costable());
+    }
+
+    /**
+     * Costs an explicit set of plans rather than everything known.
+     *
+     * <p>The market screen needs this. {@link #costable()} lets a local plan file win on
+     * identifier collision, which is right everywhere else — a hand-written plan is a
+     * deliberate statement. But it means a plan you saved months ago would be priced from your
+     * file rather than from what the retailer publishes today, and a screen whose whole job is
+     * to show you that the two have diverged cannot quietly price the stale one.
+     */
+    public Comparison compare(DateRange range, UsageData usage, List<Plan> plans) {
         var key = new Costed(usage, plans, range, baselinePlanId.orElse(null));
         var cached = cache.get(key);
         if (cached != null) {
@@ -105,6 +117,30 @@ public class ComparisonService {
         }
         cache.put(key, comparison);
         return comparison;
+    }
+
+    /**
+     * Costs published plans exactly as published, against the household's own usage.
+     *
+     * <p>The configured baseline is added if it is not already among them, because without it
+     * there is nothing to say "cheaper than what you pay now" against.
+     */
+    public Comparison compareAsPublished(DateRange range, List<Plan> published) {
+        return compare(range, usageStore.usage(), withBaseline(published));
+    }
+
+    private List<Plan> withBaseline(List<Plan> published) {
+        var baselineId = baselinePlanId.filter(id -> !id.isBlank()).orElse(null);
+        if (baselineId == null
+                || published.stream().anyMatch(plan -> plan.id().equals(baselineId))) {
+            return published;
+        }
+        var all = new ArrayList<>(published);
+        planStore.localPlans().stream()
+                .filter(plan -> plan.id().equals(baselineId))
+                .findFirst()
+                .ifPresent(all::add);
+        return List.copyOf(all);
     }
 
     /**

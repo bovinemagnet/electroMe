@@ -14,6 +14,7 @@ import io.github.bovinemagnet.electrome.core.tariff.DiscountBasis;
 import io.github.bovinemagnet.electrome.core.tariff.DiscountScope;
 import io.github.bovinemagnet.electrome.core.tariff.DistributionZone;
 import io.github.bovinemagnet.electrome.core.tariff.FlatRate;
+import io.github.bovinemagnet.electrome.core.tariff.Membership;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import io.github.bovinemagnet.electrome.core.tariff.PlanValidator;
 import io.github.bovinemagnet.electrome.core.tariff.ResetPeriod;
@@ -121,7 +122,10 @@ public final class PlanYamlLoader {
             case "tiered" -> tiered(planId, node, inclusive);
             case "controlledLoad" -> controlledLoad(planId, node, inclusive);
             case "demand" -> demand(node, inclusive);
-            case "solarFeedIn" -> new SolarFeedIn(rate(node, "cents", inclusive));
+            case "solarFeedIn" -> solarFeedIn(planId, node, inclusive);
+            // Never grossed up: published fee amounts already include GST, unlike unit prices.
+            case "membership" -> new Membership(
+                    text(node, "name"), new BigDecimal(text(node, "centsPerDay")));
             case "discount" -> discount(node);
             default -> throw new IllegalArgumentException(
                     "Plan " + planId + " uses unknown charge type: " + type);
@@ -223,6 +227,35 @@ public final class PlanYamlLoader {
                     rate(tier, "cents", inclusive)));
         }
         return tiers;
+    }
+
+    /**
+     * A credit per exported kilowatt hour, flat or by time of day.
+     *
+     * <p>The two forms are mutually exclusive, as they are for a band's {@code cents} and
+     * {@code tiers}: a charge carrying both has no single meaning, and preferring one silently
+     * would credit a household's exports from a field the author did not think they were
+     * writing.
+     */
+    private static SolarFeedIn solarFeedIn(String planId, JsonNode node, boolean inclusive) {
+        boolean hasCents = present(node, "cents");
+        boolean hasBands = present(node, "bands");
+        if (hasCents == hasBands) {
+            throw new IllegalArgumentException(
+                    "Plan " + planId + " solarFeedIn must declare exactly one of cents or bands");
+        }
+        if (hasCents) {
+            return new SolarFeedIn(rate(node, "cents", inclusive));
+        }
+        JsonNode bandNodes = node.get("bands");
+        if (!bandNodes.isArray() || bandNodes.isEmpty()) {
+            throw new IllegalArgumentException("Plan " + planId + " solarFeedIn has no bands");
+        }
+        var bands = new ArrayList<Band>();
+        for (JsonNode band : bandNodes) {
+            bands.add(band(planId, band, inclusive));
+        }
+        return new SolarFeedIn(bands);
     }
 
     private static Demand demand(JsonNode node, boolean inclusive) {

@@ -9,6 +9,7 @@
 ** xref:seasonal-split.adoc[Seasonal split]
 ** xref:what-if.adoc[What-if modelling]
 ** xref:market-plans.adoc[Market plans]
+** xref:keeping-market-plans.adoc[Keeping market plans]
 
 * Reference
 ** xref:defining-a-plan.adoc[Defining a plan]

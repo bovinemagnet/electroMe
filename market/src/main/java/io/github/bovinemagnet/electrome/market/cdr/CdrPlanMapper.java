@@ -13,6 +13,7 @@ import io.github.bovinemagnet.electrome.core.tariff.DiscountBasis;
 import io.github.bovinemagnet.electrome.core.tariff.DiscountScope;
 import io.github.bovinemagnet.electrome.core.tariff.DistributionZone;
 import io.github.bovinemagnet.electrome.core.tariff.FlatRate;
+import io.github.bovinemagnet.electrome.core.tariff.Membership;
 import io.github.bovinemagnet.electrome.core.tariff.InvalidPlanException;
 import io.github.bovinemagnet.electrome.core.tariff.Plan;
 import io.github.bovinemagnet.electrome.core.tariff.PlanValidator;
@@ -28,6 +29,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.Set;
 
 /**
@@ -92,6 +94,7 @@ public final class CdrPlanMapper {
                     planId, "unsupported rateBlockUType: " + rateBlock);
         }
 
+        membership(contract).ifPresent(charges::add);
         demand(tariffPeriods, planId).ifPresent(charges::add);
         controlledLoad(contract, planId).ifPresent(charges::add);
         charges.addAll(discounts(contract, planId));
@@ -222,8 +225,138 @@ public final class CdrPlanMapper {
                     amount == null ? "" : "$" + amount.toPlainString() + " off the bill"));
         }
 
-        return new PlanExtras(fees, incentives);
+        var variation = contract.path("variation").asText("").trim();
+        return new PlanExtras(fees, incentives, marketLinked(variation), variation);
     }
+
+    /**
+     * A recurring fee the household must pay to be on the plan.
+     *
+     * <p>The only published fee that belongs in a total. Every other kind — paper bills, card
+     * processing, dishonours, disconnection, exit — is a fact about what the household does
+     * rather than about the tariff, and costing those would charge a reader for behaviour they
+     * have not got. Across the whole AusNet register exactly one retailer charges a membership.
+     */
+    private static Optional<Charge> membership(JsonNode contract) {
+        for (JsonNode fee : contract.path("fees")) {
+            if (!"MEMBERSHIP".equalsIgnoreCase(fee.path("type").asText(""))) {
+                continue;
+            }
+            var perYear = membershipPerYear(
+                    fee.path("amount").asText(null), fee.path("description").asText(""));
+            if (perYear == null) {
+                // Left uncosted and still shown as a fee, which is what happens to every fee
+                // this mapper cannot read with confidence.
+                continue;
+            }
+            return Optional.of(Membership.perYear("Membership fee", perYear));
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * What a membership costs for a year, or null where that cannot be established.
+     *
+     * <p>The published {@code term} is not usable. Amber record a yearly total of three hundred
+     * dollars under the term FIXED, which in the standard means a one-off amount, and state the
+     * real period — twenty-five dollars a month — only in free text. So the period is read from
+     * the description and then checked against the amount: a monthly figure has to multiply up
+     * to the published total, and a yearly figure has to equal it.
+     *
+     * <p>Where the two disagree, or where no period is stated at all, nothing is costed. That
+     * leaves the plan understated by a fee the screen still shows and flags, which is the
+     * better of the two errors: overstating it would put a number on the bill that nobody
+     * published.
+     */
+    static BigDecimal membershipPerYear(String amount, String description) {
+        if (amount == null || amount.isBlank() || description == null) {
+            return null;
+        }
+        BigDecimal published;
+        try {
+            published = new BigDecimal(amount.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+        if (published.signum() <= 0) {
+            return null;
+        }
+
+        var monthly = statedAmount(description, MONTHLY_FEE);
+        if (monthly != null) {
+            return monthly.multiply(TWELVE).compareTo(published) == 0 ? published : null;
+        }
+        var yearly = statedAmount(description, YEARLY_FEE);
+        if (yearly != null) {
+            return yearly.compareTo(published) == 0 ? published : null;
+        }
+        return null;
+    }
+
+    /**
+     * The amount from whichever alternative in the pattern matched.
+     *
+     * <p>"$199 per year" and "annual membership of $199" put the figure either side of the
+     * period word, so the pattern has two capturing groups and only one of them is filled.
+     */
+    private static BigDecimal statedAmount(String description, Pattern pattern) {
+        var matcher = pattern.matcher(description);
+        if (!matcher.find()) {
+            return null;
+        }
+        for (int group = 1; group <= matcher.groupCount(); group++) {
+            var found = matcher.group(group);
+            if (found == null) {
+                continue;
+            }
+            try {
+                return new BigDecimal(found.replace(",", ""));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether the retailer says this plan's rates follow the wholesale market.
+     *
+     * <p>There is no field for this. The register models a tariff as a set of published rates,
+     * and a retailer selling exposure to the spot market has to publish one anyway — Amber
+     * publish 40.2c and say in {@code variation} that it is illustrative. So this reads what
+     * they say.
+     *
+     * <p>Deliberately narrow. "Pass through" is not a trigger: a dozen ordinary plans use it for
+     * network charges recovered at cost, which is how every plan works. "Subject to change" is
+     * not a trigger either — almost every plan in the register says that, and a filter that
+     * matched it would hide the whole market. Naming the wholesale or spot market is the claim
+     * that actually distinguishes these plans, and across the AusNet network it selects exactly
+     * the two retailers that sell them.
+     */
+    static boolean marketLinked(String variation) {
+        if (variation == null || variation.isBlank()) {
+            return false;
+        }
+        var text = variation.toLowerCase(java.util.Locale.ROOT);
+        return text.contains("wholesale")
+                || text.contains("spot price")
+                || text.contains("spot market");
+    }
+
+    private static final BigDecimal TWELVE = new BigDecimal("12");
+
+    /** "$25 per month", "$25 monthly", "$25 a month". */
+    private static final Pattern MONTHLY_FEE = Pattern.compile(
+            "\\$\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*(?:\\(?[^)]*\\)?\\s*)?"
+                    + "(?:per month|a month|monthly|/month|pm\\b)",
+            Pattern.CASE_INSENSITIVE);
+
+    /** "$199 per year", "Annual membership of $199", "$199 a year". */
+    private static final Pattern YEARLY_FEE = Pattern.compile(
+            "\\$\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)\\s*(?:\\(?[^)]*\\)?\\s*)?"
+                    + "(?:per year|per annum|a year|annually|yearly|/year|pa\\b)"
+                    + "|annual[^$]{0,40}\\$\\s*([0-9][0-9,]*(?:\\.[0-9]+)?)",
+            Pattern.CASE_INSENSITIVE);
 
     /** Absent, null or unparseable all mean "not stated", which is not an error here. */
     private static BigDecimal decimalOrNull(JsonNode node) {
@@ -615,7 +748,15 @@ public final class CdrPlanMapper {
         return name.isEmpty() ? fallback : name;
     }
 
-    /** Feed-in is frequently null, so an absent block is normal rather than a fault. */
+    /**
+     * The export credit, flat or by time of day.
+     *
+     * <p>Feed-in is frequently absent, so no block at all is normal rather than a fault. What is
+     * not normal is a block the mapper cannot read: sixty-six plans published for this network
+     * pay by time of day and carry no {@code singleTariff}, and reading only that block mapped
+     * them with no credit at all. A plan priced as paying nothing for exports looks exactly like
+     * a plan that pays nothing for exports, so the omission was invisible.
+     */
     private static Optional<Charge> feedIn(JsonNode contract, String planId) {
         for (JsonNode scheme : contract.path("solarFeedInTariff")) {
             JsonNode rates = scheme.path("singleTariff").path("rates");
@@ -623,8 +764,70 @@ public final class CdrPlanMapper {
                 return Optional.of(new SolarFeedIn(
                         cents(rates.get(0).path("unitPrice").asText(), planId, "feed-in")));
             }
+            JsonNode varying = scheme.path("timeVaryingTariffs");
+            if (varying.isArray() && !varying.isEmpty()) {
+                return Optional.of(timeVaryingFeedIn(varying, planId));
+            }
         }
         return Optional.empty();
+    }
+
+    /**
+     * One band per published window.
+     *
+     * <p>Shaped like {@link #timeOfUse}, and for the same reasons: {@code type} is not read
+     * because retailers label the same rate three different ways, and one rate entry carries
+     * several windows because a stretch crossing midnight cannot be written as one.
+     *
+     * <p>No merging of contiguous windows, unlike a capped usage band. Where a credit is capped
+     * the register publishes it against a single window, so there is nothing to rejoin; where it
+     * is not, two touching windows at the same rate are simply two bands that happen to agree
+     * and the engine credits them identically.
+     */
+    private static SolarFeedIn timeVaryingFeedIn(JsonNode varying, String planId) {
+        var bands = new ArrayList<Band>();
+        for (JsonNode entry : varying) {
+            JsonNode rates = entry.path("rates");
+            if (!rates.isArray() || rates.isEmpty()) {
+                throw new UnmappablePlanException(
+                        planId, "a time-varying feed-in entry has no rates");
+            }
+            // A capped credit: Flow Power pay seventeen cents for the first fifteen kilowatt
+            // hours exported in the evening and two cents after. Read as blocks, exactly as a
+            // capped usage window is.
+            var blocks = blocks(rates, planId, ResetPeriod.DAILY);
+            if (blocks.tiers().size() != rates.size()) {
+                throw new UnmappablePlanException(planId, "a time-varying feed-in entry has "
+                        + rates.size() + " rate rows that do not form ascending volume blocks");
+            }
+
+            JsonNode windows = entry.path("timeVariations");
+            if (!windows.isArray() || windows.isEmpty()) {
+                throw new UnmappablePlanException(
+                        planId, "a time-varying feed-in entry has no windows");
+            }
+            boolean capped = blocks.tiers().size() > 1;
+            if (capped && windows.size() > 1) {
+                // A band owns its allowance, so splitting one capped entry across windows would
+                // hand the household the allowance once per window.
+                throw new UnmappablePlanException(planId, "one capped feed-in rate covers "
+                        + windows.size() + " separate windows, sharing a single allowance the "
+                        + "model cannot express");
+            }
+            for (JsonNode window : windows) {
+                int from = Band.parseMinuteOfDay(window.path("startTime").asText());
+                int to = endMinute(window.path("endTime").asText());
+                bands.add(capped
+                        ? new Band(from, to, daySelector(window, planId),
+                                blocks.reset(), blocks.tiers())
+                        : new Band(from, to, daySelector(window, planId),
+                                blocks.tiers().get(0).centsPerKWh()));
+            }
+        }
+        if (bands.isEmpty()) {
+            throw new UnmappablePlanException(planId, "no time-varying feed-in windows");
+        }
+        return new SolarFeedIn(bands);
     }
 
     /**

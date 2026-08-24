@@ -172,7 +172,10 @@ See xref:what-if.adoc#controlled-load[Hot water and the controlled circuit].
 
 === solarFeedIn
 
-A credit per kilowatt hour exported. Contributes a negative amount to the bill.
+A credit per kilowatt hour exported. Contributes a negative amount to the bill. Only meaningful if
+your data contains export readings, or you are running a solar what-if scenario.
+
+The flat form below is still valid, and is what most plans publish.
 
 [source,yaml]
 ----
@@ -180,8 +183,102 @@ A credit per kilowatt hour exported. Contributes a negative amount to the bill.
   cents: 3.3
 ----
 
-Only meaningful if your data contains export readings, or you are running a solar what-if
-scenario.
+Retailers increasingly pay for exports the way they charge for imports: a few cents in the evening
+peak when the grid wants the energy, next to nothing at midday when it does not. Sixty-six of the
+plans published for the AusNet network do this. A `solarFeedIn` charge can carry `bands` instead
+of a flat `cents`, in the same style as `timeOfUse`:
+
+[source,yaml]
+----
+- type: solarFeedIn
+  bands:
+    - { from: "00:00", to: "10:00", days: ALL, cents: 3.85 }
+    - { from: "10:00", to: "14:00", days: ALL, cents: 1.65 }
+    - { from: "14:00", to: "16:00", days: ALL, cents: 3.85 }
+    - { from: "16:00", to: "21:00", days: ALL, cents: 11.0 }
+    - { from: "21:00", to: "24:00", days: ALL, cents: 3.85 }
+----
+
+* Exactly one of `cents` or `bands`. A charge carrying both has no single meaning, so it is
+  rejected rather than one being preferred silently.
+* A flat credit is held internally as one band covering the whole day — the same way a
+  single-rate `timeOfUse` band is one unbounded block — so both forms take the same path through
+  the costing engine.
+* Bands must cover every minute of every day exactly once, the same requirement `timeOfUse` bands
+  have. A gap is indistinguishable from a window paying nothing, and those mean different things
+  to a household weighing up solar, so the tariff has to say which — write an explicit zero band
+  rather than leaving a hole.
+* Band syntax is identical to `timeOfUse`: `from`, `to`, `days`, and `"24:00"` for the end of the
+  day.
+
+Some plans pay a generous rate only for the first so many kilowatt hours exported each day. Flow
+Power's 4Free pays 17c (18.7c including GST) for the first 15 kWh exported between 17:30 and
+21:30, and roughly 2c after that; CovaU's SolarMax does the same at 30 kWh. A band may therefore
+carry `reset` and `tiers`, exactly as a capped `timeOfUse` band does:
+
+[source,yaml]
+----
+- type: solarFeedIn
+  bands:
+    - { from: "00:00", to: "17:30", days: ALL, cents: 0 }
+    - from: "17:30"
+      to: "21:30"
+      days: ALL
+      reset: DAILY
+      tiers:
+        - { upToKWh: 15, cents: 18.7 }
+        - { cents: 2.2 }
+    - { from: "21:30", to: "24:00", days: ALL, cents: 0 }
+----
+
+The allowance accumulates and resets exactly as a capped usage window does — it is the same
+arithmetic with the sign reversed. The headline feed-in rate a plan advertises is the best rate it
+pays anywhere, which is usually the one that runs out first.
+
+[WARNING]
+====
+Where the register publishes one capped credit spread across several separate windows, the plan is
+refused rather than mapped. A band owns its own allowance, and splitting one credit across windows
+would hand the household that allowance once per window instead of once per day.
+====
+
+[#membership]
+=== membership
+
+A recurring fee that must be paid to be on the plan at all, priced per day.
+
+[source,yaml]
+----
+- type: membership
+  name: Membership fee
+  centsPerDay: 82.19
+----
+
+* This is the only published fee electroMe puts in a total, and the distinction is the point. A
+  late payment fee, a paper bill fee, a card processing fee, a disconnection fee — each of those
+  is a fact about what the household does, not about the tariff. Costing them would charge a
+  reader for behaviour they have not got. A membership is unavoidable: it is the price of access,
+  so leaving it out understates the plan by its full amount, for everybody, every year.
+* Held as cents per day, like `dailySupply`, so a window of any length costs correctly without the
+  engine needing to know when the billing period starts.
+* Never grossed up for GST. Published fee amounts already include it — several independent
+  retailers say "incl GST" in the fee's own description — which is the opposite of `unitPrice`,
+  and is why fees could not simply be folded in with the rates.
+* It gets its own bill line and its own column rather than being folded into `dailySupply`,
+  because a reader comparing daily supply charges is asking what the network costs, not what the
+  retailer charges for membership.
+
+The register's `term` field cannot be trusted for this. Amber Electric record a yearly total of
+$300 under the term `FIXED`, which in the standard means a one-off amount, and state the real
+period — $25 a month — only in the fee's free-text description. So the period is read from the
+description and then checked against the published amount: a monthly figure must multiply up to
+the total, and a yearly figure must equal it. Where the two disagree, or where no period is
+stated, nothing is costed — the plan stays understated by a fee the screen still shows and flags.
+That is the better of the two errors: overstating it would put a figure on the bill that nobody
+published.
+
+Across the whole AusNet register exactly one retailer charges a membership: Amber Electric, $300 a
+year, 82.19c a day, on five published plans.
 
 [#discount]
 === discount

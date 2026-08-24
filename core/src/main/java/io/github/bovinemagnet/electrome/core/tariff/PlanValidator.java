@@ -41,7 +41,13 @@ public final class PlanValidator {
 
         for (var charge : plan.charges()) {
             if (charge instanceof TimeOfUse tou) {
-                problems.addAll(tilingProblems(tou));
+                problems.addAll(tilingProblems(tou.bands(), "priced"));
+            }
+            // A feed-in that covers only part of the day is indistinguishable from one that
+            // pays nothing for the rest, and the two mean different things to a household with
+            // solar. Requiring the bands to tile forces the tariff to say which it is.
+            if (charge instanceof SolarFeedIn feedIn) {
+                problems.addAll(tilingProblems(feedIn.bands(), "credited"));
             }
         }
 
@@ -49,12 +55,15 @@ public final class PlanValidator {
     }
 
     /**
-     * Confirms the bands price every minute of every weekday exactly once.
+     * Confirms the bands cover every minute of every weekday exactly once.
      *
      * <p>Brute force over 7 days by 1440 minutes rather than reasoning about how day selectors
      * interact. Ten thousand checks is free, and it is correct for any combination.
+     *
+     * <p>Shared by time-of-use charges and by feed-in credits, which have the same requirement
+     * for the same reason. {@code verb} only shapes the message.
      */
-    private static List<String> tilingProblems(TimeOfUse tou) {
+    private static List<String> tilingProblems(List<Band> bands, String verb) {
         var problems = new ArrayList<String>();
         var holidays = HolidayCalendar.none();
 
@@ -68,12 +77,12 @@ public final class PlanValidator {
                 // A sentinel past the end of the day closes any run still open.
                 int matches = minute == Band.MINUTES_PER_DAY
                         ? -1
-                        : countMatches(tou, date, minute, holidays);
+                        : countMatches(bands, date, minute, holidays);
 
                 if (matches == 0 && gapStart == null) {
                     gapStart = minute;
                 } else if (matches != 0 && gapStart != null) {
-                    problems.add(describe(dayOfWeek, "is not priced from", gapStart));
+                    problems.add(describe(dayOfWeek, "is not " + verb + " from", gapStart));
                     gapStart = null;
                 }
 
@@ -81,7 +90,8 @@ public final class PlanValidator {
                     overlapStart = minute;
                 } else if (matches <= 1 && overlapStart != null) {
                     problems.add(
-                            describe(dayOfWeek, "is priced by more than one band from", overlapStart));
+                            describe(dayOfWeek,
+                                    "is " + verb + " by more than one band from", overlapStart));
                     overlapStart = null;
                 }
             }
@@ -90,9 +100,9 @@ public final class PlanValidator {
     }
 
     private static int countMatches(
-            TimeOfUse tou, LocalDate date, int minute, HolidayCalendar holidays) {
+            List<Band> bands, LocalDate date, int minute, HolidayCalendar holidays) {
         int matches = 0;
-        for (var band : tou.bands()) {
+        for (var band : bands) {
             if (band.matchesTime(minute) && band.days().matches(date, holidays)) {
                 matches++;
             }

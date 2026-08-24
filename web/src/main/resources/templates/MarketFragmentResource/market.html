@@ -1,0 +1,49 @@
+<section class="panel">
+  <p class="eyebrow" style="margin-bottom:4px">Plans from the market</p>
+
+  {#if !enabled}
+  <p class="explain" style="margin:0">
+    Market harvesting is disabled. Only your local plan files are being compared.
+  </p>
+  {#else}
+  <p class="explain">
+    Fetches every residential electricity plan published for the {zone} network through the
+    Consumer Data Right, maps each onto the same tariff model as your own plans, and compares them
+    against your actual consumption. Takes well under a minute and the result is cached.
+  </p>
+
+  <p>
+    <button type="button"
+            hx-post="/fragments/market/harvest"
+            hx-target="#market"
+            hx-swap="innerHTML"
+            hx-indicator="#market-busy">
+      {#if harvested}Refresh market plans{#else}Fetch market plans{/if}
+    </button>
+    <span id="market-busy" class="htmx-indicator">Fetching the market&hellip;</span>
+  </p>
+
+  {#if error}
+  <p class="notice error" style="margin-top:14px">{error}</p>
+  {/if}
+
+  {#if harvested}
+  <ul style="margin:14px 0 0; padding-left:18px; font-size:13px; color:var(--muted)">
+    {#for line in summary}<li>{line}</li>{/for}
+  </ul>
+
+  {#if skipReasons.size != 0}
+  <p class="explain" style="margin:12px 0 4px">Plans that could not be represented:</p>
+  <ul style="margin:0; padding-left:18px; font-size:12.5px; color:var(--muted)">
+    {#for reason in skipReasons}<li>{reason}</li>{/for}
+  </ul>
+  {/if}
+
+  <p class="explain" style="margin:14px 0 0">
+    Published rates exclude GST and have been grossed up so they are directly comparable with the
+    figures on your bill. A plan that could not be represented in the tariff model was skipped
+    rather than approximated. Update the date range above to re-cost everything.
+  </p>
+  {/if}
+  {/if}
+</section>

@@ -38,6 +38,7 @@ build/live-cdr-cache/
 # here is the code and src/docs. These stay on disk, untracked.
 design-market/
 design-phase2/
+design-save-plans/
 docs/superpowers/
 
 # The market picks, written beside the plan files.
